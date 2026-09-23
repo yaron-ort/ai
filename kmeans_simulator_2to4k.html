@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>K-Means Lab: Foods by Calories & Protein</title>
+<style>
+  :root{
+    --bg:#F4F5F1; --card:#FFFFFF; --ink:#1E2A26; --ink-soft:#5B6B65;
+    --accent:#1E3A5F; --accent-hover:#16304D; --line:#DDE1DA;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --sans: -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px 20px 40px; background:var(--bg); color:var(--ink); font-family:var(--sans); line-height:1.5;}
+  .wrap{max-width:820px; margin:0 auto;}
+  .topbar{display:flex; justify-content:space-between; align-items:flex-start; gap:16px;}
+  h1{font-family:var(--serif); font-size:22px; font-weight:700; margin:0 0 3px; letter-spacing:-0.01em;}
+  .subtitle{color:var(--ink-soft); margin:0 0 12px; font-size:13.5px;}
+  #langBtn{background:#fff; color:var(--accent); border:1.5px solid var(--accent); border-radius:7px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;}
+  #langBtn:hover{background:#EEF2F6;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 20px; margin-bottom:14px;}
+  #setupCard{position:sticky; top:12px; z-index:5; box-shadow:0 4px 14px rgba(30,42,38,0.08);}
+  .plot-toolbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid var(--line);}
+  .plot-toolbar .badge{font-size:13px;}
+  #dataText{
+    width:100%; min-height:150px; resize:vertical;
+    font-family:var(--mono); font-size:12.5px; line-height:1.45;
+    padding:12px 14px; border:1.5px solid var(--line); border-radius:8px;
+    background:#FCFDFB; color:var(--ink); direction:ltr; text-align:left;
+    white-space:pre; overflow-wrap:normal; overflow-x:auto;
+  }
+  #dataText:focus{outline:none; border-color:var(--accent);}
+  #dataCard{padding:10px 20px;}
+  #dataCard h2{margin:0; border-bottom:none; padding-bottom:0;}
+  #dataCard #dataBody{padding-top:12px; border-top:1px solid var(--line); margin-top:10px;}
+  h2.collapsible{cursor:pointer; user-select:none;}
+  h2.collapsible:hover{color:var(--accent);}
+  #dataCaret{display:inline-block; font-size:12px; transition:transform .15s ease; color:var(--ink-soft);}
+  #dataCaret.open{transform:rotate(90deg);}
+  .hint-text{font-size:13.5px; color:var(--ink-soft); margin:0 0 12px;}
+  .data-msg{font-size:13px; font-family:var(--mono);}
+  .data-msg.ok{color:#16A34A;}
+  .data-msg.err{color:#DC2626;}
+  .card h2{font-family:var(--serif); font-size:17px; margin:0 0 12px; border-bottom:1px solid var(--line); padding-bottom:8px;}
+  .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px;}
+  button{font-family:var(--sans); font-size:13.5px; font-weight:600; background:var(--accent); color:#fff; border:none; border-radius:7px; padding:8px 14px; cursor:pointer; transition:background .15s ease;}
+  button:hover:not(:disabled){background:var(--accent-hover);}
+  button:disabled{background:#C7CCC5; cursor:not-allowed; color:#8B948C;}
+  button.secondary{background:#fff; color:var(--accent); border:1.5px solid var(--accent);}
+  button.secondary:hover:not(:disabled){background:#EEF2F6;}
+  select{font-family:var(--sans); font-size:14px; padding:8px 10px; border-radius:7px; border:1.5px solid var(--line); background:#fff; color:var(--ink);}
+  select:disabled{color:#9BA39D;}
+  label.inline{font-size:14px; color:var(--ink-soft); display:flex; align-items:center; gap:6px;}
+  .meta-row{display:flex; flex-wrap:wrap; gap:16px; align-items:center; font-size:13.5px; color:var(--ink-soft); margin-top:4px;}
+  .badge{display:inline-block; font-family:var(--mono); font-size:12.5px; background:#EEF1EC; border:1px solid var(--line); border-radius:5px; padding:2px 8px;}
+  .plotbox{width:100%; direction:ltr;}
+  svg{width:100%; max-width:660px; height:auto; display:block; margin:0 auto; background:#FCFDFB; border-radius:8px; border:1px solid var(--line);}
+  .pt-label{font-family:var(--mono); font-size:9.5px; fill:var(--ink-soft); pointer-events:none;}
+  table{width:100%; border-collapse:collapse; font-size:14px;}
+  th,td{text-align:start; padding:5px 9px; border-bottom:1px solid var(--line);}
+  th{font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft);}
+  td.num, th.num{font-family:var(--mono); text-align:end;}
+  .chip{display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:13px;}
+  .dot{width:10px; height:10px; border-radius:50%; display:inline-block;}
+  .log{font-family:var(--mono); font-size:12.5px; background:#F8F9F6; border:1px solid var(--line); border-radius:7px; padding:10px 12px; max-height:120px; overflow-y:auto;}
+  .log div{padding:3px 0; border-bottom:1px dashed var(--line);}
+  .log div:last-child{border-bottom:none;}
+  .log .conv{color:#16A34A; font-weight:700;}
+  .step-label{font-weight:700; font-family:var(--serif); font-size:15px; margin-inline-start:4px;}
+  [dir="rtl"] .controls{direction:rtl;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div>
+      <h1 id="t_title">K-Means Lab: Foods by Calories &amp; Protein</h1>
+      <p class="subtitle" id="t_subtitle">Step through the algorithm by hand — assign points, update centroids, repeat until it converges.</p>
+    </div>
+    <button id="langBtn">עברית</button>
+  </div>
+
+  <div class="card" id="dataCard">
+    <h2 id="dataToggle" class="collapsible"><span id="dataCaret">&#9656;</span> <span id="t_dataHeading">0 &middot; Data &amp; presets (editable)</span></h2>
+    <div id="dataBody" style="display:none;">
+    <p class="hint-text" id="t_dataHelp">Edit the JSON below to change the foods, their Hebrew names, and the initial centroid presets for each K. Then press Apply.</p>
+    <textarea id="dataText" spellcheck="false"></textarea>
+    <div class="controls" style="margin-top:10px; margin-bottom:0;">
+      <button id="btnApplyData">Apply</button>
+      <button id="btnExportData" class="secondary">Load current</button>
+      <button id="btnRevertData" class="secondary">Restore default</button>
+      <button id="btnCopyData" class="secondary">Copy</button>
+      <span id="dataMsg" class="data-msg"></span>
+    </div>
+    </div>
+  </div>
+
+  <div class="card" id="setupCard">
+    <h2 id="t_setupHeading">1 &middot; Setup</h2>
+    <div class="controls">
+      <label class="inline" id="t_kLabelWrap"><span id="t_kLabel">K (clusters):</span>
+        <select id="kSelect"></select>
+      </label>
+      <label class="inline" id="t_presetLabelWrap"><span id="t_presetLabel">Initial centroids:</span>
+        <select id="presetSelect"></select>
+      </label>
+      <button id="btnScatter">Show scatter plot</button>
+      <button id="btnCentroids" disabled>Show initial centroids</button>
+      <button id="btnBack" class="secondary" disabled>Back</button>
+      <button id="btnStep" disabled>Run next step</button>
+      <button id="btnReset" class="secondary" disabled>Reset</button>
+    </div>
+    <div class="meta-row">
+      <span><span id="t_iterationLabel">Iteration:</span> <span class="badge" id="iterBadge">0</span></span>
+      <span><span id="t_nextActionLabel">Next action:</span> <span class="step-label" id="phaseLabel">—</span></span>
+    </div>
+  </div>
+
+  <div class="card" id="plotCard" style="display:none;">
+    <h2 id="t_plotHeading">2 &middot; Scatter plot</h2>
+    <div class="plot-toolbar">
+      <button id="btnBackPlot" class="secondary" disabled>Back</button>
+      <button id="btnStepPlot" disabled>Run next step</button>
+      <span><span id="t_iterationLabelPlot">Iteration:</span> <span class="badge" id="iterBadgePlot">0</span></span>
+      <span><span id="t_nextActionLabelPlot">Next action:</span> <span class="step-label" id="phaseLabelPlot">—</span></span>
+    </div>
+    <div class="plotbox"><svg id="plot" viewBox="0 0 760 360"></svg></div>
+  </div>
+
+  <div class="card" id="logCard" style="display:none;">
+    <h2 id="t_logHeading">3 &middot; Step log</h2>
+    <div class="log" id="log"></div>
+  </div>
+
+  <div class="card">
+    <h2 id="t_tableHeading">4 &middot; Food &rarr; cluster table</h2>
+    <table>
+      <thead>
+        <tr>
+          <th id="t_thFood">Food</th>
+          <th class="num" id="t_thCal">Calories</th>
+          <th class="num" id="t_thProt">Protein (g)</th>
+          <th id="t_thCluster">Cluster</th>
+          <th class="num" id="t_thDist">Dist. to centroid</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+/* ---------------- Data ---------------- */
+let DATA = [
+  {id:"Lettuce", cal:15, prot:1.4},
+  {id:"Cucumber", cal:16, prot:0.7},
+  {id:"Celery", cal:14, prot:0.7},
+  {id:"Chicken breast", cal:165, prot:31},
+  {id:"Turkey breast", cal:135, prot:30},
+  {id:"Tuna", cal:130, prot:28},
+  {id:"Salmon", cal:208, prot:20},
+  {id:"French fries", cal:312, prot:3.4},
+  {id:"White bread", cal:265, prot:9},
+  {id:"Bagel", cal:250, prot:10},
+  {id:"Pretzels", cal:300, prot:8}
+];
+let FOOD_HE = {
+  "Lettuce":"חסה","Cucumber":"מלפפון","Celery":"סלרי","Chicken breast":"חזה עוף",
+  "Turkey breast":"חזה הודו","Tuna":"טונה","Salmon":"סלמון","French fries":"צ׳יפס",
+  "White bread":"לחם לבן","Bagel":"בייגל","Pretzels":"בייגלה"
+};
+function foodName(id){ return lang === "he" ? (FOOD_HE[id] || id) : id; }
+
+const COLORS = ["#2563EB","#DC2626","#16A34A","#9333EA"];
+const GRAY = "#9CA3AF";
+
+/* Preset entries carry their own display labels so custom presets show sensibly. */
+let PRESETS = {
+  2: { A:{label:"Preset A (balanced)", labelHe:"אפשרות A (מאוזן)",
+          centroids:[{cal:16,prot:0.7},{cal:312,prot:3.4}]},
+       B:{label:"Preset B (skewed)", labelHe:"אפשרות B (מוטה)",
+          centroids:[{cal:165,prot:31},{cal:250,prot:10}]} },
+  3: { A:{label:"Preset A (balanced)", labelHe:"אפשרות A (מאוזן)",
+          centroids:[{cal:16,prot:0.7},{cal:165,prot:31},{cal:312,prot:3.4}]},
+       B:{label:"Preset B (skewed, but recovers)", labelHe:"אפשרות B (מוטה, אך מתאוששת)",
+          centroids:[{cal:16,prot:0.7},{cal:265,prot:9},{cal:300,prot:8}]},
+       C:{label:"Preset C (gets stuck — bad local minimum)", labelHe:"אפשרות C (נתקעת — מינימום מקומי גרוע)",
+          centroids:[{cal:15,prot:1.4},{cal:15,prot:1.4},{cal:15,prot:1.4}]} },
+  4: { A:{label:"Preset A (balanced)", labelHe:"אפשרות A (מאוזן)",
+          centroids:[{cal:16,prot:0.7},{cal:165,prot:31},{cal:265,prot:9},{cal:312,prot:3.4}]},
+       B:{label:"Preset B (skewed)", labelHe:"אפשרות B (מוטה)",
+          centroids:[{cal:16,prot:0.7},{cal:135,prot:30},{cal:208,prot:20},{cal:312,prot:3.4}]} }
+};
+
+/* ---------------- i18n ---------------- */
+let lang = "en";
+const I18N = {
+  en:{ title:"K-Means Lab: Foods by Calories &amp; Protein",
+    subtitle:"Step through the algorithm by hand — assign points, update centroids, repeat until it converges.",
+    setupHeading:"1 &middot; Setup", kLabel:"K (clusters):", presetLabel:"Initial centroids:",
+    presetRandom:"Random (new each time)", presetA:"Preset A (balanced)", presetB:"Preset B (skewed, but recovers)",
+    presetC:"Preset C (gets stuck — bad local minimum)",
+    btnScatter:"Show scatter plot", btnCentroids:"Show initial centroids", btnStep:"Run next step", btnBack:"Back", btnReset:"Reset",
+    iterationLabel:"Iteration:", nextActionLabel:"Next action:", plotHeading:"2 &middot; Scatter plot",
+    logHeading:"3 &middot; Step log", tableHeading:"4 &middot; Food &rarr; cluster table",
+    thFood:"Food", thCal:"Calories", thProt:"Protein (g)", thCluster:"Cluster", thDist:"Dist. to centroid",
+    axisX:"Calories (per 100g)", axisY:"Protein (g per 100g)",
+    phaseShowCentroids:"Show initial centroids", phaseAssign:"Assign points to nearest centroid",
+    phaseUpdate:"Update centroids", phaseConverged:"Converged ✓", dash:"—", langBtn:"עברית",
+    dataHeading:"0 &middot; Data &amp; presets (editable)",
+    dataHelp:"Edit the JSON below to change the foods, their Hebrew names, and the initial centroid presets for each K. Then press Apply.",
+    btnApplyData:"Apply", btnExportData:"Load current", btnRevertData:"Restore default", btnCopyData:"Copy" },
+  he:{ title:"מעבדת K-Means: מזונות לפי קלוריות וחלבון",
+    subtitle:"עברו על האלגוריתם שלב-שלב — שייכו נקודות, עדכנו מרכזי אשכולות, וחזרו על כך עד להתכנסות.",
+    setupHeading:"1 &middot; הגדרות", kLabel:"K (מספר אשכולות):", presetLabel:"מרכזים התחלתיים:",
+    presetRandom:"אקראי (חדש בכל פעם)", presetA:"אפשרות A (מאוזן)", presetB:"אפשרות B (מוטה, אך מתאוששת)",
+    presetC:"אפשרות C (נתקעת — מינימום מקומי גרוע)",
+    btnScatter:"הצג תרשים פיזור", btnCentroids:"הצג מרכזים התחלתיים", btnStep:"הרץ צעד הבא", btnBack:"חזרה", btnReset:"אתחול",
+    iterationLabel:"איטרציה:", nextActionLabel:"הפעולה הבאה:", plotHeading:"2 &middot; תרשים פיזור",
+    logHeading:"3 &middot; יומן צעדים", tableHeading:"4 &middot; טבלת מזון ← אשכול",
+    thFood:"מזון", thCal:"קלוריות", thProt:"חלבון (גרם)", thCluster:"אשכול", thDist:"מרחק למרכז",
+    axisX:"קלוריות (ל-100 גרם)", axisY:"חלבון (גרם ל-100 גרם)",
+    phaseShowCentroids:"הצג מרכזים התחלתיים", phaseAssign:"שיוך נקודות למרכז הקרוב",
+    phaseUpdate:"עדכון מרכזי האשכולות", phaseConverged:"התכנס ✓", dash:"—", langBtn:"English",
+    dataHeading:"0 &middot; נתונים ומרכזים התחלתיים (ניתן לעריכה)",
+    dataHelp:"ערכו את ה-JSON שלמטה כדי לשנות את פריטי המזון, שמותיהם בעברית, ואת המרכזים ההתחלתיים לכל ערך K. לאחר מכן לחצו החל.",
+    btnApplyData:"החל", btnExportData:"טען מהמצב הנוכחי", btnRevertData:"שחזר ברירת מחדל", btnCopyData:"העתק" }
+};
+function T(){ return I18N[lang]; }
+
+/* ---------------- State ---------------- */
+let state = { k:3, centroids:[], assignments:new Array(DATA.length).fill(-1), prevAssignments:null, iteration:0, converged:false, presetKind:"A" };
+let phase = "assign";
+let logEntries = [];
+let history = []; // stack of {stateSnap, phase, logLen} snapshots for the Back button
+
+/* ---------------- Plot geometry ---------------- */
+const svgNS = "http://www.w3.org/2000/svg";
+const VW = 760, VH = 360;                 // viewBox size: wider + shorter than before
+const PAD = {l:50, r:18, t:16, b:36};
+const PW = VW - PAD.l - PAD.r;
+const PH = VH - PAD.t - PAD.b;
+let CAL_MAX = 340, PROT_MAX = 34;
+/* Recompute axis ranges from whatever data is loaded, with ~10% headroom,
+   rounded up to a tidy step so gridlines stay readable. */
+function recomputeAxisRanges(){
+  const maxCal = Math.max(...DATA.map(d=>d.cal), 1);
+  const maxProt = Math.max(...DATA.map(d=>d.prot), 1);
+  const calStep = 50, protStep = 5;
+  CAL_MAX = Math.ceil((maxCal * 1.1) / calStep) * calStep;
+  PROT_MAX = Math.ceil((maxProt * 1.1) / protStep) * protStep;
+}
+/* Gridline spacing adapts so we never draw hundreds of lines on big ranges. */
+function calGridStep(){ return CAL_MAX > 1200 ? 200 : CAL_MAX > 600 ? 100 : 50; }
+function protGridStep(){ return PROT_MAX > 120 ? 20 : PROT_MAX > 60 ? 10 : 5; }
+function mapX(cal){ return PAD.l + (cal/CAL_MAX)*PW; }
+function mapY(prot){ return VH - PAD.b - (prot/PROT_MAX)*PH; }
+function dist(a,b){ return Math.sqrt((a.cal-b.cal)**2 + (a.prot-b.prot)**2); }
+function el(tag, attrs){ const e=document.createElementNS(svgNS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); return e; }
+
+function buildAxes(svg){
+  for(let c=0;c<=CAL_MAX;c+=calGridStep()){
+    const x=mapX(c);
+    svg.appendChild(el("line",{x1:x,y1:VH-PAD.b,x2:x,y2:PAD.t,stroke:"#EEF1EC","stroke-width":1}));
+    const t=el("text",{x:x,y:VH-PAD.b+14,"font-size":10,"font-family":"ui-monospace,monospace",fill:"#5B6B65","text-anchor":"middle"});
+    t.textContent=c; svg.appendChild(t);
+  }
+  for(let p=0;p<=PROT_MAX;p+=protGridStep()){
+    const y=mapY(p);
+    svg.appendChild(el("line",{x1:PAD.l,y1:y,x2:VW-PAD.r,y2:y,stroke:"#EEF1EC","stroke-width":1}));
+    const t=el("text",{x:PAD.l-8,y:y+3,"font-size":10,"font-family":"ui-monospace,monospace",fill:"#5B6B65","text-anchor":"end"});
+    t.textContent=p; svg.appendChild(t);
+  }
+  const xl=el("text",{x:PAD.l+PW/2,y:VH-4,"font-size":12,"font-family":"ui-monospace,monospace",fill:"#1E2A26","text-anchor":"middle"});
+  xl.textContent=T().axisX; svg.appendChild(xl);
+  const yl=el("text",{x:14,y:PAD.t+PH/2,"font-size":12,"font-family":"ui-monospace,monospace",fill:"#1E2A26","text-anchor":"middle",transform:`rotate(-90 14 ${PAD.t+PH/2})`});
+  yl.textContent=T().axisY; svg.appendChild(yl);
+}
+
+/* Collision-aware label placement: clusters nearby points and stacks their labels with leader lines */
+function buildLabelPlacements(points){
+  const n = points.length;
+  const visited = new Array(n).fill(false);
+  const clusters = [];
+  const THRESH = 16;
+  for(let a=0;a<n;a++){
+    if(visited[a]) continue;
+    let group=[a]; visited[a]=true; let changed=true;
+    while(changed){
+      changed=false;
+      for(let b=0;b<n;b++){
+        if(visited[b]) continue;
+        for(const g of group){
+          const dx=points[b].cx-points[g].cx, dy=points[b].cy-points[g].cy;
+          if(Math.sqrt(dx*dx+dy*dy) < THRESH){ group.push(b); visited[b]=true; changed=true; break; }
+        }
+      }
+    }
+    clusters.push(group);
+  }
+  const placements = {};
+  clusters.forEach(group=>{
+    if(group.length===1){
+      const p=points[group[0]];
+      placements[p.i]={lx:p.cx+9, ly:p.cy+3, leader:false};
+    } else {
+      const sorted = group.slice().sort((a,b)=>points[a].cy-points[b].cy);
+      const maxCx = Math.max(...group.map(idx=>points[idx].cx));
+      const avgCy = group.reduce((s,idx)=>s+points[idx].cy,0)/group.length;
+      const startY = avgCy - ((sorted.length-1)*11)/2;
+      sorted.forEach((idx,k2)=>{
+        const p = points[idx];
+        const ly = startY + k2*11 + 3;
+        const lx = maxCx + 16;
+        placements[p.i] = {lx, ly, leader:true, fromX:p.cx, fromY:p.cy};
+      });
+    }
+  });
+  return placements;
+}
+
+function drawPlot(){
+  const svg = document.getElementById("plot");
+  svg.innerHTML = "";
+  buildAxes(svg);
+
+  const pts = DATA.map((d,i)=>({i, cx:mapX(d.cal), cy:mapY(d.prot)}));
+  const placements = buildLabelPlacements(pts);
+
+  DATA.forEach((d,i)=>{
+    const cx = mapX(d.cal), cy = mapY(d.prot);
+    const color = state.assignments[i] >= 0 ? COLORS[state.assignments[i]] : GRAY;
+    const pl = placements[i];
+    if(pl.leader){
+      svg.appendChild(el("line",{x1:cx,y1:cy,x2:pl.lx-3,y2:pl.ly-3,stroke:"#C7CCC5","stroke-width":1}));
+    }
+    const circle = el("circle",{cx,cy,r:7,fill:color,stroke:"#fff","stroke-width":1.5,id:"pt-"+i});
+    svg.appendChild(circle);
+    const label = el("text",{x:pl.lx,y:pl.ly,class:"pt-label"});
+    label.textContent = foodName(d.id);
+    svg.appendChild(label);
+  });
+
+  state.centroids.forEach((c,i)=>{
+    const cx = mapX(c.cal), cy = mapY(c.prot);
+    const diamond = el("rect",{x:cx-7,y:cy-7,width:14,height:14,fill:COLORS[i],stroke:"#1E2A26","stroke-width":1.5,transform:`rotate(45 ${cx} ${cy})`,id:"cen-"+i});
+    svg.appendChild(diamond);
+    const label = el("text",{x:cx,y:cy-14,"font-size":11,"font-family":"ui-monospace,monospace",fill:"#1E2A26","text-anchor":"middle","font-weight":"700"});
+    label.textContent = "C"+(i+1);
+    svg.appendChild(label);
+  });
+}
+
+function updatePointColors(){
+  DATA.forEach((d,i)=>{
+    const node = document.getElementById("pt-"+i);
+    if(node) node.setAttribute("fill", state.assignments[i]>=0 ? COLORS[state.assignments[i]] : GRAY);
+  });
+}
+
+function renderTable(){
+  const body = document.getElementById("tableBody");
+  body.innerHTML = "";
+  DATA.forEach((d,i)=>{
+    const tr = document.createElement("tr");
+    const cluster = state.assignments[i];
+    const clusterCell = cluster>=0
+      ? `<span class="chip"><span class="dot" style="background:${COLORS[cluster]}"></span>C${cluster+1}</span>`
+      : `<span class="chip"><span class="dot" style="background:#C7CCC5"></span>${T().dash}</span>`;
+    const distCell = cluster>=0 ? dist(d, state.centroids[cluster]).toFixed(1) : T().dash;
+    tr.innerHTML = `<td>${foodName(d.id)}</td><td class="num">${d.cal}</td><td class="num">${d.prot}</td><td>${clusterCell}</td><td class="num">${distCell}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+/* ---------------- Log (rebuilt from structured entries so language toggle re-renders it) ---------------- */
+function centroidListStr(centroids){
+  return centroids.map((c,i)=>`C${i+1}=(${c.cal},${c.prot})`).join(", ");
+}
+function presetLabelFor(kind){
+  if(kind==="random") return T().presetRandom;
+  const k = state.k;
+  const p = PRESETS[k] && PRESETS[k][kind];
+  if(!p) return kind;
+  return (lang==="he" ? (p.labelHe || p.label) : p.label) || kind;
+}
+function renderLog(){
+  const logEl = document.getElementById("log");
+  if(logEntries.length===0){ document.getElementById("logCard").style.display="none"; return; }
+  document.getElementById("logCard").style.display = "block";
+  logEl.innerHTML = "";
+  logEntries.forEach(entry=>{
+    const line = document.createElement("div");
+    if(entry.kind==="initial"){
+      line.textContent = `${lang==="he"?"מרכזים התחלתיים הוצבו":"Initial centroids placed"} (K=${entry.k}, ${presetLabelFor(entry.presetKind)}): ${centroidListStr(entry.centroids)}`;
+    } else if(entry.kind==="assign"){
+      const prefix = lang==="he" ? `איטרציה ${entry.n} — שיוך: ` : `Iteration ${entry.n} — Assign: `;
+      let detail;
+      if(entry.first){ detail = lang==="he" ? "שיוך ראשוני הושלם" : "initial assignment complete"; }
+      else if(entry.changes.length===0){ detail = lang==="he" ? "אין שינויים" : "no changes"; }
+      else {
+        detail = entry.changes.map(ch => `${foodName(ch.id)}: C${ch.from+1}\u2192C${ch.to+1}`).join(", ");
+      }
+      line.textContent = prefix + detail;
+    } else if(entry.kind==="update"){
+      const prefix = lang==="he" ? `איטרציה ${entry.n} — עדכון: ` : `Iteration ${entry.n} — Update: `;
+      line.textContent = prefix + centroidListStr(entry.centroids);
+    } else if(entry.kind==="converged"){
+      line.className = "conv";
+      line.textContent = lang==="he"
+        ? `איטרציה ${entry.n} — שיוך: אין שינויים. K-Means התכנס.`
+        : `Iteration ${entry.n} — Assign: no changes. K-Means has converged.`;
+    }
+    logEl.appendChild(line);
+  });
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function pickInitialCentroids(k, kind){
+  if(kind==="random"){
+    const idx = new Set();
+    while(idx.size<k) idx.add(Math.floor(Math.random()*DATA.length));
+    return [...idx].map(i=>({cal:DATA[i].cal, prot:DATA[i].prot}));
+  }
+  return PRESETS[k][kind].centroids.map(c=>({...c}));
+}
+
+function setPhaseLabel(key){ document.getElementById("phaseLabel").textContent = T()[key]; }
+
+function populatePresetSelect(){
+  const sel = document.getElementById("presetSelect");
+  const k = parseInt(document.getElementById("kSelect").value, 10);
+  const prev = sel.value;
+  const opts = [];
+  const group = PRESETS[k] || {};
+  Object.keys(group).forEach(key=>{
+    const p = group[key];
+    const label = (lang==="he" ? (p.labelHe || p.label) : p.label) || key;
+    opts.push([key, label]);
+  });
+  opts.push(["random", T().presetRandom]);
+  sel.innerHTML = opts.map(([v,l])=>`<option value="${v}">${escapeHtml(l)}</option>`).join("");
+  if(opts.some(o=>o[0]===prev)) sel.value = prev;
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+/* Rebuild the K dropdown to match whichever cluster counts the data defines. */
+function populateKSelect(){
+  const sel = document.getElementById("kSelect");
+  const prev = sel.value;
+  const ks = Object.keys(PRESETS).map(Number).sort((a,b)=>a-b);
+  sel.innerHTML = ks.map(k=>`<option value="${k}">${k}</option>`).join("");
+  if(ks.includes(Number(prev))) sel.value = prev;
+  else if(ks.includes(3)) sel.value = "3";
+}
+
+/* ---------------- Translation application ---------------- */
+function applyStaticText(){
+  document.title = T().title.replace(/&middot;|&amp;|&rarr;/g,m=>({"&middot;":"·","&amp;":"&","&rarr;":"→"}[m]));
+  document.getElementById("t_title").innerHTML = T().title;
+  document.getElementById("t_subtitle").textContent = T().subtitle;
+  document.getElementById("t_setupHeading").innerHTML = T().setupHeading;
+  document.getElementById("t_kLabel").textContent = T().kLabel;
+  document.getElementById("t_presetLabel").textContent = T().presetLabel;
+  document.getElementById("btnScatter").textContent = T().btnScatter;
+  document.getElementById("btnCentroids").textContent = T().btnCentroids;
+  document.getElementById("btnStep").textContent = T().btnStep;
+  document.getElementById("btnStepPlot").textContent = T().btnStep;
+  document.getElementById("btnBack").textContent = T().btnBack;
+  document.getElementById("btnBackPlot").textContent = T().btnBack;
+  document.getElementById("btnReset").textContent = T().btnReset;
+  document.getElementById("t_iterationLabel").textContent = T().iterationLabel;
+  document.getElementById("t_nextActionLabel").textContent = T().nextActionLabel;
+  document.getElementById("t_iterationLabelPlot").textContent = T().iterationLabel;
+  document.getElementById("t_nextActionLabelPlot").textContent = T().nextActionLabel;
+  document.getElementById("t_plotHeading").innerHTML = T().plotHeading;
+  document.getElementById("t_logHeading").innerHTML = T().logHeading;
+  document.getElementById("t_tableHeading").innerHTML = T().tableHeading;
+  document.getElementById("t_thFood").textContent = T().thFood;
+  document.getElementById("t_thCal").textContent = T().thCal;
+  document.getElementById("t_thProt").textContent = T().thProt;
+  document.getElementById("t_thCluster").textContent = T().thCluster;
+  document.getElementById("t_thDist").textContent = T().thDist;
+  document.getElementById("langBtn").textContent = T().langBtn;
+  document.getElementById("t_dataHeading").innerHTML = T().dataHeading;
+  document.getElementById("t_dataHelp").textContent = T().dataHelp;
+  document.getElementById("btnApplyData").textContent = T().btnApplyData;
+  document.getElementById("btnExportData").textContent = T().btnExportData;
+  document.getElementById("btnRevertData").textContent = T().btnRevertData;
+  document.getElementById("btnCopyData").textContent = T().btnCopyData;
+  populatePresetSelect();
+  document.getElementById("presetSelect").value = state.presetKind || "A";
+  // phase label
+  if(state.converged) setPhaseLabel("phaseConverged");
+  else if(document.getElementById("btnCentroids").disabled === false) setPhaseLabel("phaseShowCentroids");
+  else if(phase==="assign") setPhaseLabel("phaseAssign");
+  else setPhaseLabel("phaseUpdate");
+  syncStepControls();
+}
+
+document.getElementById("langBtn").addEventListener("click", ()=>{
+  lang = lang==="en" ? "he" : "en";
+  document.documentElement.setAttribute("lang", lang);
+  document.body.setAttribute("dir", lang==="he" ? "rtl" : "ltr");
+  applyStaticText();
+  if(document.getElementById("plotCard").style.display!=="none") drawPlot();
+  renderTable();
+  renderLog();
+});
+
+/* ---------------- Button handlers ---------------- */
+document.getElementById("kSelect").addEventListener("change", populatePresetSelect);
+
+document.getElementById("btnScatter").addEventListener("click", ()=>{
+  document.getElementById("plotCard").style.display = "block";
+  drawPlot();
+  document.getElementById("btnScatter").disabled = true;
+  document.getElementById("btnCentroids").disabled = false;
+  document.getElementById("btnReset").disabled = false;
+  setPhaseLabel("phaseShowCentroids");
+});
+
+document.getElementById("btnCentroids").addEventListener("click", ()=>{
+  state.k = parseInt(document.getElementById("kSelect").value, 10);
+  state.presetKind = document.getElementById("presetSelect").value;
+  state.centroids = pickInitialCentroids(state.k, state.presetKind);
+  state.assignments = new Array(DATA.length).fill(-1);
+  state.prevAssignments = null;
+  state.iteration = 0;
+  state.converged = false;
+  phase = "assign";
+  logEntries = [];
+  history = [];
+  drawPlot();
+  renderTable();
+  logEntries.push({kind:"initial", k:state.k, presetKind:state.presetKind, centroids:state.centroids});
+  renderLog();
+  document.getElementById("btnCentroids").disabled = true;
+  document.getElementById("kSelect").disabled = true;
+  document.getElementById("presetSelect").disabled = true;
+  document.getElementById("iterBadge").textContent = "0";
+  setPhaseLabel("phaseAssign");
+  syncStepControls();
+});
+
+/* Sync the two toolbars (top card + plot card) so both always reflect current state */
+function syncStepControls(){
+  const backDisabled = history.length === 0;
+  const stepDisabled = state.converged || state.centroids.length === 0;
+  [document.getElementById("btnBack"), document.getElementById("btnBackPlot")].forEach(b=>{ if(b) b.disabled = backDisabled; });
+  [document.getElementById("btnStep"), document.getElementById("btnStepPlot")].forEach(b=>{ if(b) b.disabled = stepDisabled; });
+  const iterText = String(state.iteration);
+  document.getElementById("iterBadge").textContent = iterText;
+  const iterBadgePlot = document.getElementById("iterBadgePlot");
+  if(iterBadgePlot) iterBadgePlot.textContent = iterText;
+  const phaseText = document.getElementById("phaseLabel").textContent;
+  const phaseLabelPlot = document.getElementById("phaseLabelPlot");
+  if(phaseLabelPlot) phaseLabelPlot.textContent = phaseText;
+}
+
+function performNextStep(){
+  if(state.converged || state.centroids.length===0) return;
+
+  // snapshot BEFORE mutating, so Back can restore this exact prior state
+  history.push({
+    stateSnap: JSON.parse(JSON.stringify(state)),
+    phase: phase,
+    logLen: logEntries.length
+  });
+
+  if(phase === "assign"){
+    const newAssignments = DATA.map(d=>{
+      let best=0, bestDist=Infinity;
+      state.centroids.forEach((c,ci)=>{ const dd=dist(d,c); if(dd<bestDist){bestDist=dd; best=ci;} });
+      return best;
+    });
+    state.iteration += 1;
+
+    if(state.prevAssignments && newAssignments.every((v,i)=>v===state.prevAssignments[i])){
+      state.assignments = newAssignments;
+      updatePointColors();
+      renderTable();
+      logEntries.push({kind:"converged", n:state.iteration});
+      renderLog();
+      state.converged = true;
+      setPhaseLabel("phaseConverged");
+      syncStepControls();
+      return;
+    }
+
+    let changes = [];
+    if(state.prevAssignments){
+      DATA.forEach((d,i)=>{
+        if(newAssignments[i]!==state.prevAssignments[i]) changes.push({id:d.id, from:state.prevAssignments[i], to:newAssignments[i]});
+      });
+    }
+    state.assignments = newAssignments;
+    updatePointColors();
+    renderTable();
+    logEntries.push({kind:"assign", n:state.iteration, first:!state.prevAssignments, changes});
+    renderLog();
+    setPhaseLabel("phaseUpdate");
+    phase = "update";
+
+  } else {
+    const newCentroids = state.centroids.map((c,ci)=>{
+      const members = DATA.filter((d,i)=>state.assignments[i]===ci);
+      if(members.length===0) return c;
+      const cal = members.reduce((s,d)=>s+d.cal,0)/members.length;
+      const prot = members.reduce((s,d)=>s+d.prot,0)/members.length;
+      return {cal:Math.round(cal*10)/10, prot:Math.round(prot*10)/10};
+    });
+    state.centroids = newCentroids;
+    state.prevAssignments = state.assignments.slice();
+    drawPlot();
+    renderTable();
+    logEntries.push({kind:"update", n:state.iteration, centroids:state.centroids});
+    renderLog();
+    setPhaseLabel("phaseAssign");
+    phase = "assign";
+  }
+  syncStepControls();
+}
+
+function performBack(){
+  if(history.length===0) return;
+  const snap = history.pop();
+  state = snap.stateSnap;
+  phase = snap.phase;
+  logEntries.length = snap.logLen;
+  drawPlot();
+  renderTable();
+  renderLog();
+  if(state.converged) setPhaseLabel("phaseConverged");
+  else if(phase==="assign") setPhaseLabel("phaseAssign");
+  else setPhaseLabel("phaseUpdate");
+  syncStepControls();
+}
+
+document.getElementById("btnStep").addEventListener("click", performNextStep);
+document.getElementById("btnStepPlot").addEventListener("click", performNextStep);
+document.getElementById("btnBack").addEventListener("click", performBack);
+document.getElementById("btnBackPlot").addEventListener("click", performBack);
+
+document.getElementById("btnReset").addEventListener("click", ()=>{ location.reload(); });
+
+/* ---------------- Data editor (export / import) ---------------- */
+
+/* Keep a pristine copy so "Restore default" always works. */
+const DEFAULT_SNAPSHOT = JSON.stringify({DATA, FOOD_HE, PRESETS});
+
+function buildDataObject(){
+  const foods = DATA.map(d=>({
+    name: d.id,
+    he: FOOD_HE[d.id] || "",
+    cal: d.cal,
+    prot: d.prot
+  }));
+  const presets = {};
+  Object.keys(PRESETS).sort((a,b)=>Number(a)-Number(b)).forEach(k=>{
+    presets[k] = {};
+    Object.keys(PRESETS[k]).forEach(key=>{
+      const p = PRESETS[k][key];
+      presets[k][key] = {
+        label: p.label,
+        labelHe: p.labelHe,
+        centroids: p.centroids.map(c=>[c.cal, c.prot])
+      };
+    });
+  });
+  return {foods, presets};
+}
+
+function serializeData(){
+  const obj = buildDataObject();
+  // Hand-formatted for readability: one food / one centroid set per line.
+  const foodLines = obj.foods.map(f =>
+    `    {"name": ${JSON.stringify(f.name)}, "he": ${JSON.stringify(f.he)}, "cal": ${f.cal}, "prot": ${f.prot}}`
+  ).join(",\n");
+
+  const presetBlocks = Object.keys(obj.presets).map(k=>{
+    const inner = Object.keys(obj.presets[k]).map(key=>{
+      const p = obj.presets[k][key];
+      const cents = p.centroids.map(c=>`[${c[0]}, ${c[1]}]`).join(", ");
+      return `      ${JSON.stringify(key)}: {"label": ${JSON.stringify(p.label)}, "labelHe": ${JSON.stringify(p.labelHe)}, "centroids": [${cents}]}`;
+    }).join(",\n");
+    return `    ${JSON.stringify(k)}: {\n${inner}\n    }`;
+  }).join(",\n");
+
+  return `{\n  "foods": [\n${foodLines}\n  ],\n  "presets": {\n${presetBlocks}\n  }\n}`;
+}
+
+function setDataMsg(text, kind){
+  const el = document.getElementById("dataMsg");
+  el.textContent = text;
+  el.className = "data-msg" + (kind ? " " + kind : "");
+  if(kind === "ok") setTimeout(()=>{ if(el.textContent===text){ el.textContent=""; el.className="data-msg"; } }, 4000);
+}
+
+/* Validate and apply the JSON in the textarea. Returns true on success. */
+function applyDataFromText(){
+  const raw = document.getElementById("dataText").value;
+  let obj;
+  try {
+    obj = JSON.parse(raw);
+  } catch(e){
+    setDataMsg((lang==="he" ? "שגיאת JSON: " : "JSON error: ") + e.message, "err");
+    return false;
+  }
+
+  // --- validate foods ---
+  if(!Array.isArray(obj.foods) || obj.foods.length < 2){
+    setDataMsg(lang==="he" ? "נדרשים לפחות שני פריטי מזון." : "Need at least 2 foods.", "err");
+    return false;
+  }
+  const newData = [], newHe = {}, seen = new Set();
+  for(const f of obj.foods){
+    if(!f || typeof f.name !== "string" || !f.name.trim()){
+      setDataMsg(lang==="he" ? "לכל מזון נדרש שדה name." : "Every food needs a name.", "err");
+      return false;
+    }
+    const cal = Number(f.cal), prot = Number(f.prot);
+    if(!isFinite(cal) || !isFinite(prot) || cal < 0 || prot < 0){
+      setDataMsg((lang==="he" ? "ערכים לא תקינים עבור: " : "Invalid cal/prot for: ") + f.name, "err");
+      return false;
+    }
+    if(seen.has(f.name)){
+      setDataMsg((lang==="he" ? "שם כפול: " : "Duplicate name: ") + f.name, "err");
+      return false;
+    }
+    seen.add(f.name);
+    newData.push({id:f.name, cal, prot});
+    if(f.he) newHe[f.name] = f.he;
+  }
+
+  // --- validate presets ---
+  if(!obj.presets || typeof obj.presets !== "object" || Array.isArray(obj.presets)){
+    setDataMsg(lang==="he" ? "חסר אובייקט presets." : "Missing presets object.", "err");
+    return false;
+  }
+  const newPresets = {};
+  for(const kStr of Object.keys(obj.presets)){
+    const k = Number(kStr);
+    if(!Number.isInteger(k) || k < 1){
+      setDataMsg((lang==="he" ? "מפתח K לא תקין: " : "Invalid K key: ") + kStr, "err");
+      return false;
+    }
+    if(k > newData.length){
+      setDataMsg((lang==="he" ? "K גדול ממספר פריטי המזון: K=" : "K exceeds number of foods: K=") + k, "err");
+      return false;
+    }
+    const group = obj.presets[kStr];
+    if(!group || typeof group !== "object"){
+      setDataMsg((lang==="he" ? "presets לא תקין עבור K=" : "Invalid presets for K=") + k, "err");
+      return false;
+    }
+    newPresets[k] = {};
+    for(const key of Object.keys(group)){
+      if(key === "random"){
+        setDataMsg(lang==="he" ? '"random" הוא שם שמור.' : '"random" is a reserved preset name.', "err");
+        return false;
+      }
+      const p = group[key];
+      if(!p || !Array.isArray(p.centroids)){
+        setDataMsg((lang==="he" ? "חסר centroids ב-" : "Missing centroids in ") + `K=${k}/${key}`, "err");
+        return false;
+      }
+      if(p.centroids.length !== k){
+        setDataMsg(
+          (lang==="he"
+            ? `מספר המרכזים חייב להיות ${k} עבור K=${k} (באפשרות ${key} יש ${p.centroids.length}).`
+            : `Need exactly ${k} centroids for K=${k} (preset ${key} has ${p.centroids.length}).`),
+          "err");
+        return false;
+      }
+      const cents = [];
+      for(const c of p.centroids){
+        if(!Array.isArray(c) || c.length !== 2 || !isFinite(Number(c[0])) || !isFinite(Number(c[1]))){
+          setDataMsg((lang==="he" ? "מרכז לא תקין ב-" : "Invalid centroid in ") + `K=${k}/${key}`, "err");
+          return false;
+        }
+        cents.push({cal:Number(c[0]), prot:Number(c[1])});
+      }
+      newPresets[k][key] = {
+        label: p.label || key,
+        labelHe: p.labelHe || p.label || key,
+        centroids: cents
+      };
+    }
+  }
+  if(Object.keys(newPresets).length === 0){
+    setDataMsg(lang==="he" ? "נדרשת לפחות קבוצת presets אחת." : "Need at least one K in presets.", "err");
+    return false;
+  }
+
+  // --- commit ---
+  DATA = newData;
+  FOOD_HE = newHe;
+  PRESETS = newPresets;
+  recomputeAxisRanges();
+  hardResetRun();
+  setDataMsg(
+    (lang==="he" ? `הוחל: ${DATA.length} פריטים, ` : `Applied: ${DATA.length} foods, `) +
+    (lang==="he" ? `ערכי K: ${Object.keys(PRESETS).join(", ")}` : `K values: ${Object.keys(PRESETS).join(", ")}`),
+    "ok");
+  return true;
+}
+
+/* Return the whole simulation to its pre-run state (used after loading new data). */
+function hardResetRun(){
+  state = { k:3, centroids:[], assignments:new Array(DATA.length).fill(-1),
+            prevAssignments:null, iteration:0, converged:false, presetKind:"A" };
+  phase = "assign";
+  logEntries = [];
+  history = [];
+
+  populateKSelect();
+  populatePresetSelect();
+  document.getElementById("kSelect").disabled = false;
+  document.getElementById("presetSelect").disabled = false;
+  state.k = parseInt(document.getElementById("kSelect").value, 10);
+
+  document.getElementById("btnScatter").disabled = false;
+  document.getElementById("btnCentroids").disabled = true;
+  document.getElementById("plotCard").style.display = "none";
+  document.getElementById("logCard").style.display = "none";
+  document.getElementById("iterBadge").textContent = "0";
+  setPhaseLabel("phaseShowCentroids");
+  document.getElementById("phaseLabel").textContent = T().dash;
+
+  renderTable();
+  renderLog();
+  syncStepControls();
+}
+
+document.getElementById("dataToggle").addEventListener("click", ()=>{
+  const body = document.getElementById("dataBody");
+  const caret = document.getElementById("dataCaret");
+  const open = body.style.display !== "none";
+  body.style.display = open ? "none" : "block";
+  caret.classList.toggle("open", !open);
+});
+
+document.getElementById("btnApplyData").addEventListener("click", applyDataFromText);
+document.getElementById("btnExportData").addEventListener("click", ()=>{
+  document.getElementById("dataText").value = serializeData();
+  setDataMsg(lang==="he" ? "נטען מהמצב הנוכחי." : "Loaded from current state.", "ok");
+});
+document.getElementById("btnRevertData").addEventListener("click", ()=>{
+  const snap = JSON.parse(DEFAULT_SNAPSHOT);
+  DATA = snap.DATA; FOOD_HE = snap.FOOD_HE; PRESETS = snap.PRESETS;
+  recomputeAxisRanges();
+  hardResetRun();
+  document.getElementById("dataText").value = serializeData();
+  setDataMsg(lang==="he" ? "שוחזרו נתוני ברירת המחדל." : "Default data restored.", "ok");
+});
+document.getElementById("btnCopyData").addEventListener("click", ()=>{
+  const ta = document.getElementById("dataText");
+  ta.select();
+  try {
+    document.execCommand("copy");
+    setDataMsg(lang==="he" ? "הועתק ללוח." : "Copied to clipboard.", "ok");
+  } catch(e){
+    setDataMsg(lang==="he" ? "ההעתקה נכשלה — העתיקו ידנית." : "Copy failed — select and copy manually.", "err");
+  }
+  window.getSelection().removeAllRanges();
+});
+
+/* ---------------- Init ---------------- */
+recomputeAxisRanges();
+populateKSelect();
+populatePresetSelect();
+document.getElementById("dataText").value = serializeData();
+renderTable();
+</script>
+</body>
+</html>
