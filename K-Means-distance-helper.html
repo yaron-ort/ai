@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>עוזר החישובים — K-Means</title>
+<style>
+  :root{
+    --bg:#F4F5F1; --card:#fff; --ink:#1E2A26; --soft:#5B6B65; --line:#DDE1DA;
+    --accent:#1E3A5F; --accent2:#16304D; --quiet:#9BA39D;
+    --ok:#2F7D52; --okbg:#F1F8F3; --okbr:#CFE6D8;
+    --c1:#DC2626; --c2:#2563EB;
+    --tip:#FBF7EF; --tipbr:#E8DCC4;
+    --mono: ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --serif: Georgia,"Times New Roman",serif;
+    --sans: -apple-system,"Segoe UI",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:18px; background:var(--bg); color:var(--ink);
+       font-family:var(--sans); line-height:1.5; font-size:14px;}
+  .wrap{max-width:900px; margin:0 auto;}
+  h1{font-family:var(--serif); font-size:21px; margin:0 0 3px;}
+  .sub{color:var(--soft); font-size:13px; margin:0 0 14px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:10px;
+        padding:16px 18px; margin-bottom:12px;}
+  .card h2{font-family:var(--serif); font-size:16px; margin:0 0 10px;
+           border-bottom:1px solid var(--line); padding-bottom:7px;}
+  .formula{background:var(--tip); border:1px solid var(--tipbr); border-radius:8px;
+           padding:10px 13px; font-size:14px; margin-bottom:12px;}
+  .formula code{font-family:var(--mono); font-size:14px; direction:ltr; display:inline-block;}
+  .layout{display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start;}
+  svg{border:1px solid var(--line); border-radius:7px; background:#FCFDFB; flex:none;}
+  table{border-collapse:collapse; font-size:13.5px;}
+  th,td{border:1px solid var(--line); padding:4px 7px; text-align:center;}
+  th{background:#F1F3EE; font-size:12px; font-weight:600;}
+  td.lbl{font-weight:700; background:#FAFBF8; white-space:nowrap; text-align:right;}
+  td.lbl small{font-family:var(--mono); font-weight:400; color:var(--soft);}
+  input.cell{width:76px; font-family:var(--mono); font-size:13.5px; text-align:center;
+             padding:5px 4px; border:1.5px solid var(--line); border-radius:6px;
+             background:#fff; color:var(--ink);}
+  input.cell:focus{outline:none; border-color:var(--accent);}
+  input.cell.done{background:var(--okbg); border-color:var(--okbr); color:var(--ok); font-weight:700;}
+  input.cell.auto{background:#F3F5F1; border-color:var(--line); color:var(--soft);}
+  select.pick{font-family:var(--mono); font-size:13.5px; padding:5px 6px; min-width:74px;
+              border:1.5px solid var(--line); border-radius:6px; background:#fff; color:var(--ink);}
+  select.pick:disabled{background:#F5F6F3; color:#B6BDB5;}
+  select.pick.done{background:var(--okbg); border-color:var(--okbr); color:var(--ok); font-weight:700;}
+  button{font-family:var(--sans); font-size:13.5px; font-weight:600;
+         background:var(--accent); color:#fff; border:none; border-radius:8px;
+         padding:9px 16px; cursor:pointer;}
+  button:hover:not(:disabled){background:var(--accent2);}
+  button:disabled{background:#C7CCC5; color:#8B948C; cursor:not-allowed;}
+  button.ghost{background:#fff; color:var(--accent); border:1.5px solid var(--accent);}
+  button.ghost:hover:not(:disabled){background:#EEF2F6;}
+  button.ghost:disabled{color:#A8B0A8; border-color:var(--line); background:#fff;}
+  .bar{display:flex; gap:9px; flex-wrap:wrap; align-items:center; margin-top:12px;}
+  .status{font-size:13px; color:var(--soft);}
+  .status b{color:var(--accent);}
+  .msg{font-size:13px; color:var(--quiet); margin-top:8px; min-height:19px;}
+  .msg.good{color:var(--ok); font-weight:600;}
+  .tick{display:inline-block; margin-inline-start:5px; color:var(--ok);
+        font-weight:700; font-size:14px; opacity:0; transform:scale(.6);
+        transition:opacity .18s ease, transform .18s ease;}
+  .tick.on{opacity:1; transform:scale(1);}
+  td.cellwrap{white-space:nowrap;}
+  .centroids{font-family:var(--mono); font-size:13.5px; margin:6px 0 0;}
+  .meanblock{margin-top:8px; padding:9px 11px; border:1px solid var(--line); border-radius:8px;}
+  .meanblock.locked{opacity:.5;}
+  .meanrow{display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:13.5px;}
+  .meanrow input{width:62px; font-family:var(--mono); text-align:center; padding:5px;
+                 border:1.5px solid var(--line); border-radius:6px;}
+  .meanrow input:disabled{background:#F5F6F3;}
+  .meanrow input.done{background:var(--okbg); border-color:var(--okbr); color:var(--ok); font-weight:700;}
+  .tag1{color:var(--c1);} .tag2{color:var(--c2);}
+  .stage{display:none;} .stage.on{display:block;}
+  .final{background:var(--okbg); border:1px solid var(--okbr); border-radius:8px;
+         padding:12px 14px; font-size:14px; color:#1F5637;}
+  .note{font-size:12.5px; color:var(--soft);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>‏עוזר החישובים — K-Means בעבודת יד</h1>
+  <p class="sub">חשבו בעצמכם כמה מרחקים ובדקו אותם. את השאר העוזר ישלים — אבל את ההחלטה לאיזה אשכול כל מזון שייך תקבלו תמיד אתם.</p>
+
+  <div class="card">
+    <div class="formula">
+      ‏נוסחת המרחק: <code>d = √( (קלוריות₁ − קלוריות₂)² + (חלבון₁ − חלבון₂)² )</code><br>
+      <span class="note">‏עגלו לשתי ספרות אחרי הנקודה. סטייה קטנה מתקבלת.</span>
+    </div>
+    <div class="layout">
+      <svg id="plot" width="300" height="300" viewBox="0 0 300 300"></svg>
+      <div>
+        <table id="dataTable"></table>
+        <p class="centroids" id="curCent"></p>
+        <p class="note" style="max-width:230px; margin-top:8px;">
+          ‏הערכים כאן מפושטים בכוונה כדי שאפשר יהיה לחשב ביד.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="iterCard">
+    <h2 id="iterTitle"></h2>
+    <p class="note" id="iterHelp"></p>
+    <table id="distTable"></table>
+    <p class="msg" id="msg"></p>
+    <div class="bar">
+      <span class="status" id="status"></span>
+      <button class="ghost" id="btnAuto" disabled>‏השלם את המרחקים עבורי</button>
+    </div>
+
+    <div id="meanBox" style="display:none; margin-top:16px; border-top:1px solid var(--line); padding-top:14px;">
+      <p style="margin:0 0 6px;"><b>‏עדכון המרכזים</b> — חשבו את ממוצע הקלוריות וממוצע החלבון בכל אשכול:</p>
+      <p class="note" style="margin:0 0 8px;">‏סדר הכתיבה: <span dir="ltr" style="font-family:var(--mono)">(קלוריות , חלבון)</span> — בדיוק כמו בטבלה ובשרטוט.</p>
+
+      <div class="meanblock" id="block1">
+        <p class="note" id="mem1" style="margin:0 0 6px;"></p>
+        <div class="meanrow">
+          <span class="tag1">‏C1 =</span>
+          <span dir="ltr" style="font-family:var(--mono);">( <input id="m1x" placeholder="קלוריות"> , <input id="m1y" placeholder="חלבון"> )</span>
+          <button id="btnMean1">בדיקה</button>
+          <button class="ghost" id="btnMean1Auto">חשב עבורי</button>
+        </div>
+        <p class="msg" id="mean1Msg"></p>
+      </div>
+
+      <div class="meanblock locked" id="block2">
+        <p class="note" id="mem2" style="margin:0 0 6px;"></p>
+        <div class="meanrow">
+          <span class="tag2">‏C2 =</span>
+          <span dir="ltr" style="font-family:var(--mono);">( <input id="m2x" placeholder="קלוריות" disabled> , <input id="m2y" placeholder="חלבון" disabled> )</span>
+          <button id="btnMean2" disabled>בדיקה</button>
+          <button class="ghost" id="btnMean2Auto" disabled>חשב עבורי</button>
+        </div>
+        <p class="msg" id="mean2Msg"></p>
+      </div>
+
+      <div class="bar">
+        <button id="btnNext" disabled>‏המשך לאיטרציה הבאה ←</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card stage" id="doneCard">
+    <h2>‏סיום</h2>
+    <div class="final" id="finalText"></div>
+    <div class="bar">
+      <button id="btnCopy">‏העתק את העבודה שלי</button>
+      <button class="ghost" id="btnRestart">התחל מחדש</button>
+      <span class="msg" id="copyMsg" style="margin-top:0;"></span>
+    </div>
+    <p class="note" style="margin-top:8px;">
+      ‏לחצו על ״העתק את העבודה שלי״, פתחו מסמך Google Docs, והדביקו. משם אפשר להגיש ב-Google Classroom.
+    </p>
+  </div>
+</div>
+
+<script>
+/* Row order is deliberately mixed so the clusters do not come out as
+   "the first rows" and "the last rows". */
+const PTS = [
+  {n:"חסה",     cal:1, pro:3},
+  {n:"טונה",    cal:6, pro:4},
+  {n:"מלפפון",  cal:1, pro:7},
+  {n:"לחם",     cal:5, pro:0},
+  {n:"עגבנייה", cal:1, pro:8},
+  {n:"גבינה",   cal:7, pro:5}
+];
+const START = [{cal:7,pro:5},{cal:1,pro:3}];
+const TOL  = 0.1;          // rounding slack on a distance
+const NEED = [3, 2, 0];    // self-solved distances required per iteration
+
+let iter = 0;
+let cents = START.map(c=>({...c}));
+let filled = [], picked = [];
+let selfCount = 0;
+let assign = [];
+let prevAssign = null;
+let history = [];          // one entry per iteration, for the final summary
+let selfTotal = 0;         // distances the student computed unaided, overall
+
+const dist = (p,c) => Math.sqrt((p.cal-c.cal)**2 + (p.pro-c.pro)**2);
+const r2 = v => Math.round(v*100)/100;
+const nearest = (p) => dist(p,cents[0]) < dist(p,cents[1]) ? 0 : 1;
+
+/* ---------- data table ---------- */
+function buildDataTable(){
+  let h = `<tr><th>מזון</th><th>קלוריות</th><th>חלבון</th></tr>`;
+  PTS.forEach(p=>{ h += `<tr><td class="lbl">${p.n}</td><td>${p.cal}</td><td>${p.pro}</td></tr>`; });
+  document.getElementById("dataTable").innerHTML = h;
+}
+
+/* ---------- plot ---------- */
+function drawPlot(){
+  const X = v => 38 + 27*v, Y = v => 262 - 27*v;
+  let s = "";
+  for(let i=0;i<=9;i++){
+    s += `<line x1="${X(i)}" y1="${Y(0)}" x2="${X(i)}" y2="${Y(9)}" stroke="#E9EDE5"/>`;
+    s += `<line x1="${X(0)}" y1="${Y(i)}" x2="${X(9)}" y2="${Y(i)}" stroke="#E9EDE5"/>`;
+    s += `<text x="${X(i)}" y="278" font-size="9.5" fill="#5B6B65" text-anchor="middle" font-family="ui-monospace,monospace">${i}</text>`;
+    s += `<text x="31" y="${Y(i)+3}" font-size="9.5" fill="#5B6B65" text-anchor="end" font-family="ui-monospace,monospace">${i}</text>`;
+  }
+  s += `<line x1="${X(0)}" y1="${Y(0)}" x2="${X(9)}" y2="${Y(0)}" stroke="#5B6B65" stroke-width="1.3"/>`;
+  s += `<line x1="${X(0)}" y1="${Y(0)}" x2="${X(0)}" y2="${Y(9)}" stroke="#5B6B65" stroke-width="1.3"/>`;
+  s += `<text x="${X(4.5)}" y="294" font-size="10" fill="#1E2A26" text-anchor="middle">קלוריות</text>`;
+  s += `<text x="14" y="${Y(4.5)}" font-size="10" fill="#1E2A26" text-anchor="middle" transform="rotate(-90 14 ${Y(4.5)})">חלבון</text>`;
+  PTS.forEach((p,i)=>{
+    /* Points only take a cluster colour once the student has chosen it. */
+    const col = (picked[i] === 0) ? "#DC2626" : (picked[i] === 1) ? "#2563EB" : "#1E2A26";
+    s += `<circle cx="${X(p.cal)}" cy="${Y(p.pro)}" r="5" fill="${col}"/>`;
+    s += `<text x="${X(p.cal)+8}" y="${Y(p.pro)-4}" font-size="10.5" font-weight="700">${p.n}</text>`;
+  });
+  cents.forEach((c,ci)=>{
+    const col = ci===0 ? "#DC2626" : "#2563EB";
+    s += `<rect x="${X(c.cal)-6}" y="${Y(c.pro)-6}" width="12" height="12" fill="none" stroke="${col}" stroke-width="2.2" transform="rotate(45 ${X(c.cal)} ${Y(c.pro)})"/>`;
+    s += `<text x="${X(c.cal)-15}" y="${Y(c.pro)-9}" font-size="10.5" fill="${col}" font-weight="700" font-family="ui-monospace,monospace">C${ci+1}</text>`;
+  });
+  document.getElementById("plot").innerHTML = s;
+}
+
+/* ---------- distance table ---------- */
+function buildTable(){
+  let h = `<tr><th>מזון</th>
+             <th class="tag1">‏d ל-C1 (${r2(cents[0].cal)}, ${r2(cents[0].pro)})</th>
+             <th class="tag2">‏d ל-C2 (${r2(cents[1].cal)}, ${r2(cents[1].pro)})</th>
+             <th>‏האשכול הקרוב — בחרו</th></tr>`;
+  PTS.forEach((p,i)=>{
+    h += `<tr>
+      <td class="lbl">${p.n} <small>(${p.cal},${p.pro})</small></td>
+      <td class="cellwrap"><input class="cell" id="c_${i}_0" inputmode="decimal" autocomplete="off"><span class="tick" id="t_${i}_0">✓</span></td>
+      <td class="cellwrap"><input class="cell" id="c_${i}_1" inputmode="decimal" autocomplete="off"><span class="tick" id="t_${i}_1">✓</span></td>
+      <td class="cellwrap"><select class="pick" id="s_${i}" disabled>
+            <option value="">— בחרו —</option>
+            <option value="0">C1</option>
+            <option value="1">C2</option>
+          </select><span class="tick" id="ts_${i}">✓</span></td></tr>`;
+  });
+  document.getElementById("distTable").innerHTML = h;
+
+  PTS.forEach((p,i)=>{
+    [0,1].forEach(ci=>{
+      const el = document.getElementById(`c_${i}_${ci}`);
+      el.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); checkCell(i,ci); }});
+      el.addEventListener("blur", ()=>{ if(el.value.trim()) checkCell(i,ci); });
+    });
+    document.getElementById(`s_${i}`).addEventListener("change", ()=>checkPick(i));
+  });
+}
+
+function checkCell(i, ci){
+  const el = document.getElementById(`c_${i}_${ci}`);
+  if(filled[i][ci]) return;
+  const raw = el.value.trim().replace(",", ".");
+  if(!raw) return;
+  const val = Number(raw);
+  if(!isFinite(val)){ setMsg("‏כתבו מספר."); return; }
+  const truth = dist(PTS[i], cents[ci]);
+  if(Math.abs(val - truth) <= TOL){
+    selfTotal++;
+    el.value = truth.toFixed(2);
+    el.classList.add("done"); el.readOnly = true;
+    document.getElementById(`t_${i}_${ci}`).classList.add("on");
+    filled[i][ci] = true; selfCount++;
+    setMsg(praise(), true); afterFill();
+  } else {
+    setMsg("‏עוד לא — בדקו שוב את ההפרשים ואת הריבועים.");
+  }
+}
+
+/* The cluster choice is always the student's. The tool never fills it. */
+function checkPick(i){
+  const sel = document.getElementById(`s_${i}`);
+  if(picked[i] !== null && picked[i] !== undefined) return;
+  const v = sel.value;
+  if(v === "") return;
+  if(Number(v) === nearest(PTS[i])){
+    picked[i] = Number(v);
+    sel.classList.add("done"); sel.disabled = true;
+    document.getElementById(`ts_${i}`).classList.add("on");
+    setMsg(praise(), true); drawPlot(); maybeFinish();
+  } else {
+    sel.value = "";
+    setMsg("‏עוד לא — השוו את שני המרחקים ובחרו את הקטן מביניהם.");
+  }
+}
+
+function setMsg(t, good){
+  const el = document.getElementById("msg");
+  el.textContent = t;
+  el.className = "msg" + (good ? " good" : "");
+}
+const PRAISE = ["‏✓ יפה, זה נכון!", "‏✓ מצוין!", "‏✓ כל הכבוד!", "‏✓ בדיוק!", "‏✓ נכון מאוד!"];
+const praise = () => PRAISE[Math.floor(Math.random()*PRAISE.length)];
+
+function afterFill(){
+  // a row's select opens as soon as both its distances are known
+  PTS.forEach((p,i)=>{
+    if(filled[i][0] && filled[i][1] && picked[i] == null)
+      document.getElementById(`s_${i}`).disabled = false;
+  });
+  updateStatus();
+}
+
+function updateStatus(){
+  const need = NEED[Math.min(iter, NEED.length-1)];
+  const st = document.getElementById("status");
+  const btn = document.getElementById("btnAuto");
+  const allFilled = filled.every(r=>r[0]&&r[1]);
+  if(allFilled){
+    const left = picked.filter(v=>v==null).length;
+    st.innerHTML = left
+      ? `‏כל המרחקים מוכנים. נותר לכם לבחור אשכול עבור <b>${left}</b> מזונות.`
+      : `‏כל השיוכים נבחרו.`;
+    btn.disabled = true;
+    return;
+  }
+  if(selfCount >= need){
+    st.innerHTML = `‏יפה — חישבתם <b>${selfCount}</b> מרחקים בעצמכם. אפשר להשלים את השאר.`;
+    btn.disabled = false;
+  } else {
+    st.innerHTML = `‏חישבתם בעצמכם <b>${selfCount}</b> מתוך <b>${need}</b> מרחקים הדרושים כדי לפתוח את ההשלמה.`;
+    btn.disabled = true;
+  }
+}
+
+document.getElementById("btnAuto").addEventListener("click", ()=>{
+  PTS.forEach((p,i)=>{
+    [0,1].forEach(ci=>{
+      if(filled[i][ci]) return;
+      const el = document.getElementById(`c_${i}_${ci}`);
+      el.value = dist(p,cents[ci]).toFixed(2);
+      el.classList.add("auto"); el.readOnly = true;
+      filled[i][ci] = true;
+    });
+  });
+  setMsg(""); afterFill();
+});
+
+/* ---------- centroid update, one cluster at a time ---------- */
+function maybeFinish(){
+  updateStatus();
+  if(picked.some(v=>v==null)) return;
+
+  assign = picked.slice();
+  history.push({
+    n: iter + 1,
+    cents: cents.map(c=>({...c})),
+    rows: PTS.map((p,i)=>({
+      name: p.n,
+      d0: dist(p,cents[0]).toFixed(2),
+      d1: dist(p,cents[1]).toFixed(2),
+      pick: assign[i] + 1
+    })),
+    self: selfCount
+  });
+  if(prevAssign && assign.every((v,i)=>v===prevAssign[i])){ showConverged(); return; }
+
+  const names = ci => PTS.filter((_,i)=>assign[i]===ci).map(p=>p.n).join(", ");
+  document.getElementById("mem1").innerHTML = `<span class="tag1">‏C1</span> מכיל: ${names(0)}`;
+  document.getElementById("mem2").innerHTML = `<span class="tag2">‏C2</span> מכיל: ${names(1)} <span class="note">— ייפתח אחרי ש-C1 יהיה נכון</span>`;
+  document.getElementById("meanBox").style.display = "block";
+}
+
+function trueMean(ci){
+  const m = PTS.filter((_,i)=>assign[i]===ci);
+  return {cal: m.reduce((s,p)=>s+p.cal,0)/m.length, pro: m.reduce((s,p)=>s+p.pro,0)/m.length};
+}
+
+function lockMean(ci, val){
+  const [xi,yi] = ci===0 ? ["m1x","m1y"] : ["m2x","m2y"];
+  [[xi,val.cal],[yi,val.pro]].forEach(([id,v])=>{
+    const el=document.getElementById(id);
+    el.value = r2(v); el.classList.add("done"); el.disabled = true;
+  });
+  document.getElementById(ci===0?"btnMean1":"btnMean2").disabled = true;
+  document.getElementById(ci===0?"btnMean1Auto":"btnMean2Auto").disabled = true;
+
+  if(ci===0){
+    // only now does C2 become available
+    document.getElementById("block2").classList.remove("locked");
+    ["m2x","m2y"].forEach(id=>document.getElementById(id).disabled=false);
+    document.getElementById("btnMean2").disabled = false;
+    document.getElementById("btnMean2Auto").disabled = false;
+    const names = PTS.filter((_,i)=>assign[i]===1).map(p=>p.n).join(", ");
+    document.getElementById("mem2").innerHTML = `<span class="tag2">‏C2</span> מכיל: ${names}`;
+  } else {
+    document.getElementById("btnNext").disabled = false;
+  }
+}
+
+function wireMean(ci){
+  const btn = document.getElementById(ci===0?"btnMean1":"btnMean2");
+  const auto = document.getElementById(ci===0?"btnMean1Auto":"btnMean2Auto");
+  const msg = document.getElementById(ci===0?"mean1Msg":"mean2Msg");
+  const [xi,yi] = ci===0 ? ["m1x","m1y"] : ["m2x","m2y"];
+  btn.addEventListener("click", ()=>{
+    const t = trueMean(ci);
+    const gx = Number(document.getElementById(xi).value.trim().replace(",","."));
+    const gy = Number(document.getElementById(yi).value.trim().replace(",","."));
+    if(isFinite(gx) && isFinite(gy) && Math.abs(gx-t.cal)<=0.05 && Math.abs(gy-t.pro)<=0.05){
+      msg.textContent = praise(); msg.className = "msg good"; lockMean(ci,t);
+    } else {
+      msg.textContent = "‏עוד לא — ממוצע הוא סכום הערכים חלקי מספר המזונות באשכול.";
+      msg.className = "msg";
+    }
+  });
+  auto.addEventListener("click", ()=>{ msg.textContent=""; msg.className="msg"; lockMean(ci, trueMean(ci)); });
+}
+wireMean(0); wireMean(1);
+
+document.getElementById("btnNext").addEventListener("click", ()=>{
+  prevAssign = assign.slice();
+  cents = [trueMean(0), trueMean(1)];
+  iter++;
+  startIteration();
+});
+
+/* ---------- stages ---------- */
+function startIteration(){
+  filled = PTS.map(()=>[false,false]);
+  picked = PTS.map(()=>null);
+  selfCount = 0;
+  const need = NEED[Math.min(iter, NEED.length-1)];
+
+  document.getElementById("iterTitle").textContent = `‏איטרציה ${iter+1}`;
+  document.getElementById("iterHelp").textContent = need > 0
+    ? `‏חשבו בעצמכם לפחות ${need} מרחקים ובדקו אותם, ואז תיפתח ההשלמה האוטומטית. את בחירת האשכול תעשו תמיד בעצמכם.`
+    : "‏זהו סבב בדיקה — אפשר להשלים את המרחקים אוטומטית, ולבדוק אם מישהו החליף אשכול.";
+  document.getElementById("curCent").innerHTML =
+    `<span class="tag1">‏C1 = (${r2(cents[0].cal)}, ${r2(cents[0].pro)})</span><br>` +
+    `<span class="tag2">‏C2 = (${r2(cents[1].cal)}, ${r2(cents[1].pro)})</span>`;
+
+  ["m1x","m1y","m2x","m2y"].forEach(id=>{
+    const el=document.getElementById(id); el.value=""; el.classList.remove("done");
+    el.disabled = id.startsWith("m2");
+  });
+  document.getElementById("block2").classList.add("locked");
+  document.getElementById("meanBox").style.display="none";
+  ["mean1Msg","mean2Msg"].forEach(id=>document.getElementById(id).textContent="");
+  document.getElementById("btnMean1").disabled=false;
+  document.getElementById("btnMean1Auto").disabled=false;
+  document.getElementById("btnMean2").disabled=true;
+  document.getElementById("btnMean2Auto").disabled=true;
+  document.getElementById("btnNext").disabled=true;
+  setMsg("");
+
+  buildTable(); drawPlot(); updateStatus();
+  document.querySelectorAll(".tick").forEach(t=>t.classList.remove("on"));
+  if(need === 0) document.getElementById("btnAuto").disabled = false;
+}
+
+function showConverged(){
+  const names = ci => PTS.filter((_,i)=>assign[i]===ci).map(p=>p.n).join(", ");
+  document.getElementById("iterCard").style.display = "none";
+  document.getElementById("doneCard").classList.add("on");
+  document.getElementById("finalText").innerHTML =
+    `‏אף מזון לא החליף אשכול — האלגוריתם <b>התכנס</b>.<br><br>` +
+    `<span class="tag1">‏C1 = (${r2(cents[0].cal)}, ${r2(cents[0].pro)})</span> מכיל: <b>${names(0)}</b><br>` +
+    `<span class="tag2">‏C2 = (${r2(cents[1].cal)}, ${r2(cents[1].pro)})</span> מכיל: <b>${names(1)}</b><br><br>` +
+    `<span class="note">‏שימו לב ש״לחם״ החליף אשכול בין איטרציה 1 ל-2. בדיוק בגלל זה סבב אחד לא מספיק.</span>`;
+}
+
+function buildReport(){
+  const RLM = "\u200F";
+  const date = new Date().toLocaleDateString("he-IL");
+  const out = [];
+  const L = t => String(t).split("\n").forEach(line => out.push(line ? RLM + line : ""));
+
+  L("‏K-Means בעבודת יד — העבודה שלי");
+  out.push("");
+  L(`תאריך: ${date}`);
+  out.push("");
+  L("הנתונים:");
+  PTS.forEach(p => L(`  ${p.n} — קלוריות ${p.cal}, חלבון ${p.pro}`));
+  out.push("");
+
+  history.forEach(h=>{
+    L(`איטרציה ${h.n}`);
+    L(`  מרכזים: C1 = (${r2(h.cents[0].cal)}, ${r2(h.cents[0].pro)})   C2 = (${r2(h.cents[1].cal)}, ${r2(h.cents[1].pro)})`);
+    h.rows.forEach(r => L(`  ${r.name}: d ל-C1 = ${r.d0} , d ל-C2 = ${r.d1}  ←  C${r.pick}`));
+    out.push("");
+  });
+
+  const names = ci => PTS.filter((_,i)=>assign[i]===ci).map(p=>p.n).join(", ");
+  L("התוצאה הסופית:");
+  L(`  C1 = (${r2(cents[0].cal)}, ${r2(cents[0].pro)}) מכיל: ${names(0)}`);
+  L(`  C2 = (${r2(cents[1].cal)}, ${r2(cents[1].pro)}) מכיל: ${names(1)}`);
+  out.push("");
+  L(`מספר האיטרציות עד להתכנסות: ${history.length}`);
+  L(`מרחקים שחישבתי בעצמי: ${selfTotal}`);
+  out.push("");
+  L("‏״לחם״ החליף אשכול בין איטרציה 1 ל-2 — ולכן סבב אחד לא מספיק.");
+  return out.join("\r\n");
+}
+
+document.getElementById("btnCopy").addEventListener("click", async ()=>{
+  const text = buildReport();
+  const el = document.getElementById("copyMsg");
+  const ok = t => { el.textContent = t; el.className = "msg good"; setTimeout(()=>{ if(el.textContent===t) el.textContent=""; }, 5000); };
+  const bad = t => { el.textContent = t; el.className = "msg"; };
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+      ok("‏✓ הועתק! הדביקו במסמך."); return;
+    }
+    throw new Error("no clipboard api");
+  }catch(e){
+    /* file:// pages block the async clipboard API */
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position="fixed"; ta.style.top="-1000px";
+    document.body.appendChild(ta); ta.select();
+    let done=false;
+    try{ done = document.execCommand("copy"); }catch(_){ done=false; }
+    document.body.removeChild(ta);
+    done ? ok("‏✓ הועתק! הדביקו במסמך.") : bad("‏ההעתקה נכשלה — סמנו והעתיקו ידנית.");
+  }
+});
+
+document.getElementById("btnRestart").addEventListener("click", ()=>{
+  iter=0; cents=START.map(c=>({...c})); assign=[]; prevAssign=null;
+  history=[]; selfTotal=0;
+  document.getElementById("copyMsg").textContent="";
+  document.getElementById("doneCard").classList.remove("on");
+  document.getElementById("iterCard").style.display="block";
+  startIteration();
+});
+
+buildDataTable();
+startIteration();
+</script>
+</body>
+</html>
