@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>בדיקה עצמית</title>
+<style>
+  :root{
+    --bg:#F4F5F1; --card:#FFFFFF; --ink:#1E2A26; --ink-soft:#5B6B65;
+    --accent:#1E3A5F; --accent-hover:#16304D; --line:#DDE1DA;
+    --quiet:#9BA39D;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --sans: -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:18px 18px 50px; background:var(--bg); color:var(--ink);
+       font-family:var(--sans); line-height:1.55;}
+  .wrap{max-width:760px; margin:0 auto;}
+  .topbar{display:flex; justify-content:space-between; align-items:flex-start; gap:14px;}
+  h1{font-family:var(--serif); font-size:22px; font-weight:700; margin:0 0 3px;}
+  .subtitle{color:var(--ink-soft); margin:0 0 14px; font-size:13.5px;}
+  #langBtn{background:#fff; color:var(--accent); border:1.5px solid var(--accent);
+           border-radius:7px; padding:7px 13px; font-size:13px; font-weight:600;
+           cursor:pointer; white-space:nowrap;}
+  #langBtn:hover{background:#EEF2F6;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:10px;
+        padding:16px 18px; margin-bottom:12px;}
+  label.field{display:block; font-size:12px; font-weight:600; color:var(--ink-soft);
+              margin-bottom:6px; text-transform:uppercase; letter-spacing:.03em;}
+  select, input[type="text"], textarea{
+    width:100%; font-family:var(--sans); font-size:15px; padding:10px 12px;
+    border:1.5px solid var(--line); border-radius:8px; background:#fff; color:var(--ink);
+  }
+  textarea{min-height:90px; resize:vertical; line-height:1.5;}
+  select:focus, input[type="text"]:focus, textarea:focus{outline:none; border-color:var(--accent);}
+  .qtext{font-size:16px; margin:0 0 10px; white-space:pre-wrap;}
+  .qcode{
+    direction:ltr; text-align:left; font-family:var(--mono); font-size:12.5px;
+    background:#F8F9F6; border:1px solid var(--line); border-radius:7px;
+    padding:10px 12px; margin:0 0 10px; overflow-x:auto; white-space:pre;
+  }
+  .qmeta{font-size:12.5px; color:var(--ink-soft); margin:0 0 12px;}
+  .row{display:flex; gap:8px; align-items:stretch; margin-top:10px; flex-wrap:wrap;}
+  .row .grow{flex:1; min-width:180px;}
+  button.primary{font-family:var(--sans); font-size:14px; font-weight:600;
+    background:var(--accent); color:#fff; border:none; border-radius:8px;
+    padding:10px 18px; cursor:pointer; white-space:nowrap;}
+  button.primary:hover{background:var(--accent-hover);}
+  button.ghost{font-family:var(--sans); font-size:13.5px; font-weight:600;
+    background:#fff; color:var(--accent); border:1.5px solid var(--accent);
+    border-radius:8px; padding:9px 14px; cursor:pointer; white-space:nowrap;}
+  button.ghost:hover{background:#EEF2F6;}
+  button.ghost:disabled{color:#A8B0A8; border-color:var(--line); cursor:not-allowed; background:#fff;}
+  .nav{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:12px;}
+
+  /* Feedback is deliberately faint: a quiet note, never a verdict.
+     No coloured panels, no big marks — a wrong answer is fine. */
+  .verdict{margin-top:10px; font-size:12.5px; color:var(--quiet);
+           display:none; line-height:1.5;}
+  .verdict.show{display:block;}
+  .verdict .mark{font-weight:500;}
+  .verdict .note{display:block; margin-top:2px;}
+
+  .hintbox{margin-top:10px; font-size:13.5px; color:var(--ink-soft); font-style:italic; display:none;}
+  .hintbox.show{display:block;}
+  .progress{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;}
+  .pchip{min-width:28px; height:28px; padding:0 6px; border-radius:6px;
+         border:1.5px solid var(--line); background:#fff; font-size:12.5px;
+         font-family:var(--mono); display:flex; align-items:center;
+         justify-content:center; color:var(--quiet); cursor:pointer;}
+  .pchip:hover{border-color:var(--accent);}
+  /* Answered vs not — nothing about right or wrong. */
+  .pchip.filled{background:#EFF1EC; color:var(--ink);}
+  .pchip.current{border-color:var(--accent); border-width:2px; color:var(--accent); font-weight:700;}
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .copymsg{font-size:13px; font-family:var(--mono);}
+  .docwrap{margin-top:6px;}
+  .docbar{display:flex; align-items:center; gap:10px; margin-bottom:8px;}
+  .docstatus{font-size:12.5px; color:var(--ink-soft); white-space:nowrap;}
+  .docprog{flex:1; height:6px; background:#E8EBE5; border-radius:99px; overflow:hidden;}
+  .docprog-fill{height:100%; width:0%; background:var(--accent); border-radius:99px;
+                transition:width .45s cubic-bezier(.4,0,.2,1);}
+  .docpage{background:#fff; border:1px solid var(--line); border-radius:8px;
+           padding:18px 20px; max-height:300px; overflow-y:auto;
+           box-shadow:inset 0 1px 3px rgba(30,42,38,.04);}
+  .docpage .doc-h1{font-family:var(--serif); font-size:16px; font-weight:700; margin:0 0 8px;}
+  .docpage .doc-meta{font-size:12.5px; color:var(--ink-soft); margin:0 0 4px;}
+  .docpage .doc-rule{border:none; border-top:1px solid var(--line); margin:12px 0;}
+  .docpage .doc-empty{font-size:13px; color:var(--quiet); font-style:italic; margin:6px 0;}
+  .doc-block{animation:docIn .45s cubic-bezier(.2,.8,.2,1); margin-bottom:4px;}
+  @keyframes docIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+  .doc-block .dq{font-size:13.5px; font-weight:600; margin:0 0 4px;}
+  .doc-block .dcode{direction:ltr; text-align:left; font-family:var(--mono);
+                    font-size:11.5px; background:#F8F9F6; border:1px solid var(--line);
+                    border-radius:5px; padding:6px 8px; margin:4px 0; overflow-x:auto; white-space:pre;}
+  .doc-block .da{font-size:13.5px; margin:2px 0 0;}
+  .doc-block .da b{font-weight:600;}
+</style>
+</head>
+<body dir="rtl">
+<div class="wrap">
+  <div class="topbar">
+    <div>
+      <h1 id="t_title"></h1>
+      <p class="subtitle" id="t_subtitle"></p>
+    </div>
+    <button id="langBtn">English</button>
+  </div>
+
+  <div class="card">
+    <label class="field" id="t_pickLabel">שאלה</label>
+    <select id="qSelect"></select>
+    <div class="progress" id="progress"></div>
+  </div>
+
+  <div class="card">
+    <p class="qtext" id="qText"></p>
+    <pre class="qcode" id="qCode" style="display:none;"></pre>
+    <p class="qmeta" id="qMeta"></p>
+
+    <div class="row" id="inputRow">
+      <input type="text" class="grow" id="answerInput" autocomplete="off" spellcheck="false">
+      <button class="primary" id="btnCheck">בדיקה</button>
+    </div>
+    <textarea id="answerArea" style="display:none;" spellcheck="false"></textarea>
+
+    <div class="row">
+      <button class="ghost" id="btnHint">הצג רמז</button>
+      <button class="ghost" id="btnClear">ניקוי</button>
+    </div>
+
+    <div class="hintbox" id="hintBox"></div>
+    <div class="verdict" id="verdict"></div>
+
+    <div class="nav">
+      <button class="ghost" id="btnPrev">→ הקודם</button>
+      <button class="ghost" id="btnNext">הבא ←</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label class="field" id="t_submitLabel">סיום והגשה</label>
+    <div class="docwrap">
+      <div class="docbar">
+        <span id="docStatus" class="docstatus"></span>
+        <div class="docprog"><div class="docprog-fill" id="docProgFill"></div></div>
+      </div>
+      <div class="docpage" id="docPreview"></div>
+    </div>
+    <div class="toolbar" style="margin-top:12px;">
+      <button class="primary" id="btnCopyAll">העתק הכל</button>
+      <button class="ghost" id="btnResetAll">התחל מחדש</button>
+      <span class="copymsg" id="copyMsg"></span>
+    </div>
+    <p class="qmeta" id="t_submitHelp" style="margin-top:10px; margin-bottom:0;"></p>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   ==========  המורה: ערכו רק את הבלוק הזה  ============================
+   ==========  TEACHER: EDIT ONLY THIS BLOCK  ==========================
+   =====================================================================
+
+   כותרת הדף ותת-הכותרת נמצאות כאן, יחד עם השאלות.
+   The page title and subtitle live here, together with the questions.
+
+   שדות לכל שאלה / Fields per question:
+     q / qHe    - נוסח השאלה (אנגלית / עברית)
+     q2 / qHe2  - אופציונלי: שורת שאלה שנייה, מוצגת אחרי בלוק הקוד
+     code       - אופציונלי: בלוק JSON שמוצג בנפרד, משמאל לימין
+     type       - "number" | "text" | "open"
+     answer     - number: מספר בודד  |  text: מחרוזת או רשימת מחרוזות
+     tolerance  - (למספרים) סטייה מותרת. ברירת מחדל 0
+     hint / hintHe - רמז אופציונלי
+     note / noteHe - הערה קצרה שמוצגת אחרי תשובה נכונה
+   ===================================================================== */
+
+const QUIZ = {
+
+  titleHe:    "הדגמה — תרגול חישובים",
+  title:      "Demo — Calculation Practice",
+  subtitleHe: "הדגמה בכיתה. נחשב יחד מרחקים ומרכזי אשכולות.",
+  subtitle:   "Classroom demo. We will compute distances and cluster centres together.",
+
+  questions: [
+    {
+      qHe: "נחשב יחד את המרחק בין הנקודה לסנטרואיד:\n\n" +
+           "הנקודה — טונה: קלוריות 130, חלבון 28\n" +
+           "הסנטרואיד: קלוריות 118, חלבון 19\n\n" +
+           "מהו המרחק ביניהם?",
+      q: "Let's compute the distance between the point and the centroid together:\n\n" +
+         "The point — Tuna: 130 calories, 28 protein\n" +
+         "The centroid: 118 calories, 19 protein\n\n" +
+         "What is the distance between them?",
+      type: "number",
+      answer: 15,
+      tolerance: 0.5,
+      hintHe: "ההפרש בקלוריות הוא 12 וההפרש בחלבון הוא 9. העלו כל אחד בריבוע, חברו, והוציאו שורש.",
+      hint: "The calorie difference is 12 and the protein difference is 9. Square each, add them, take the square root.",
+      noteHe: "12 בריבוע הוא 144, ו-9 בריבוע הוא 81. יחד 225, והשורש שלו הוא 15 בדיוק.",
+      note: "12 squared is 144, and 9 squared is 81. Together 225, whose square root is exactly 15."
+    },
+    {
+      qHe: "שלוש הנקודות הבאות שייכות לאותו סנטרואיד:\n\n" +
+           "חזה עוף: קלוריות 165, חלבון 31\n" +
+           "חזה הודו: קלוריות 135, חלבון 30\n" +
+           "טונה: קלוריות 130, חלבון 28\n\n" +
+           "נחשב את המרכז החדש. כמה קלוריות במרכז החדש?",
+      q: "The following three points all belong to the same centroid:\n\n" +
+         "Chicken breast: 165 calories, 31 protein\n" +
+         "Turkey breast: 135 calories, 30 protein\n" +
+         "Tuna: 130 calories, 28 protein\n\n" +
+         "Let's compute the new centre. How many calories does it have?",
+      type: "number",
+      answer: 143.3,
+      tolerance: 0.5,
+      hintHe: "חברו את שלושת ערכי הקלוריות וחלקו בשלוש.",
+      hint: "Add the three calorie values and divide by three.",
+      noteHe: "165 ועוד 135 ועוד 130 שווה 430. חלקי 3 זה 143.33, כלומר 143.3 לאחר עיגול.",
+      note: "165 plus 135 plus 130 is 430. Divided by 3 that is 143.33, or 143.3 rounded."
+    },
+    {
+      qHe: "בהמשך לשאלה הקודמת, ועבור אותן שלוש הנקודות — כמה חלבון יש במרכז החדש?",
+      q: "Continuing from the previous question, and for those same three points — how much protein does the new centre have?",
+      type: "number",
+      answer: 29.7,
+      tolerance: 0.2,
+      hintHe: "אותה שיטה בדיוק, אבל הפעם על ערכי החלבון: 31, 30 ו-28.",
+      hint: "Exactly the same method, but this time on the protein values: 31, 30 and 28.",
+      noteHe: "31 ועוד 30 ועוד 28 שווה 89. חלקי 3 זה 29.67, כלומר 29.7 לאחר עיגול.",
+      note: "31 plus 30 plus 28 is 89. Divided by 3 that is 29.67, or 29.7 rounded."
+    },
+    {
+      qHe: "נתרגל שוב מרחק, הפעם בערכים אחרים:\n\n" +
+           "הנקודה — לחם לבן: קלוריות 265, חלבון 9\n" +
+           "הסנטרואיד: קלוריות 257, חלבון 15\n\n" +
+           "מהו המרחק ביניהם?",
+      q: "Let's practise distance again, with different values:\n\n" +
+         "The point — White bread: 265 calories, 9 protein\n" +
+         "The centroid: 257 calories, 15 protein\n\n" +
+         "What is the distance between them?",
+      type: "number",
+      answer: 10,
+      tolerance: 0.5,
+      hintHe: "ההפרש בקלוריות הוא 8 וההפרש בחלבון הוא 6.",
+      hint: "The calorie difference is 8 and the protein difference is 6.",
+      noteHe: "8 בריבוע הוא 64, ו-6 בריבוע הוא 36. יחד 100, והשורש שלו הוא 10 בדיוק.",
+      note: "8 squared is 64, and 6 squared is 36. Together 100, whose square root is exactly 10."
+    },
+    {
+      qHe: "נתרגל שוב מציאת מרכז, הפעם עם נקודות אחרות, ונסתפק בקלוריות בלבד:\n\n" +
+           "בייגל: קלוריות 250, חלבון 10\n" +
+           "בייגלה: קלוריות 300, חלבון 8\n" +
+           "צ׳יפס: קלוריות 312, חלבון 3.4\n\n" +
+           "כמה קלוריות במרכז החדש?",
+      q: "Let's find a centre once more, with different points, and only the calories this time:\n\n" +
+         "Bagel: 250 calories, 10 protein\n" +
+         "Pretzels: 300 calories, 8 protein\n" +
+         "French fries: 312 calories, 3.4 protein\n\n" +
+         "How many calories does the new centre have?",
+      type: "number",
+      answer: 287.3,
+      tolerance: 0.5,
+      hintHe: "חברו את שלושת ערכי הקלוריות וחלקו בשלוש.",
+      hint: "Add the three calorie values and divide by three.",
+      noteHe: "250 ועוד 300 ועוד 312 שווה 862. חלקי 3 זה 287.33, כלומר 287.3 לאחר עיגול.",
+      note: "250 plus 300 plus 312 is 862. Divided by 3 that is 287.33, or 287.3 rounded."
+    }
+  ]
+};
+/* =====================================================================
+   ==========  סוף אזור המורה / END OF TEACHER SECTION  ================
+   ===================================================================== */
+
+const QUESTIONS = QUIZ.questions;
+
+let lang = "he";
+const I18N = {
+  he: {
+    pickLabel: "שאלה", check: "בדיקה",
+    hintBtn: "הצג רמז", hintBtnHide: "הסתר רמז", clear: "ניקוי",
+    prev: "→ הקודם", next: "הבא ←",
+    correct: "נכון", soft: "עוד לא",
+    openMsg: "נשמר",
+    empty: "כתבו תשובה תחילה.", notANumber: "אנא הזינו מספר.",
+    typeNumber: "תשובה: מספר", typeText: "תשובה: טקסט קצר",
+    typeOpen: "שאלה פתוחה",
+    submitLabel: "סיום והגשה", copyAll: "העתק הכל", resetAll: "התחל מחדש",
+    copied: "הועתק! הדביקו במסמך Google Docs.",
+    copyFail: "ההעתקה נכשלה — סמנו והעתיקו ידנית.",
+    submitHelp: 'לחצו "העתק הכל", פתחו מסמך Google Docs חדש, והדביקו. משם אפשר לערוך ולהגיש ב-Google Classroom.',
+    docStatus: (d,t) => `נאספו ${d} מתוך ${t} תשובות`,
+    docEmpty: "התשובות שלכם יופיעו כאן בהדרגה.",
+    hdrDate: "תאריך",
+    lblQuestion: "שאלה", lblAnswer: "התשובה שלי",
+    confirmReset: "לנקות את כל התשובות ולהתחיל מחדש?",
+    langBtn: "English"
+  },
+  en: {
+    pickLabel: "Question", check: "Check",
+    hintBtn: "Show hint", hintBtnHide: "Hide hint", clear: "Clear",
+    prev: "← Previous", next: "Next →",
+    correct: "correct", soft: "not yet",
+    openMsg: "saved",
+    empty: "Write an answer first.", notANumber: "Please enter a number.",
+    typeNumber: "Answer: a number", typeText: "Answer: short text",
+    typeOpen: "Open question",
+    submitLabel: "Finish and submit", copyAll: "Copy all", resetAll: "Start over",
+    copied: "Copied! Paste into a Google Docs file.",
+    copyFail: "Copy failed — select and copy manually.",
+    submitHelp: 'Press "Copy all", open a new Google Docs file, and paste. From there you can edit and submit on Google Classroom.',
+    docStatus: (d,t) => `${d} of ${t} answers collected`,
+    docEmpty: "Your answers will appear here as you go.",
+    hdrDate: "Date",
+    lblQuestion: "Question", lblAnswer: "My answer",
+    confirmReset: "Clear all answers and start over?",
+    langBtn: "עברית"
+  }
+};
+function T(){ return I18N[lang]; }
+function quizTitle(){ return (lang === "he" ? QUIZ.titleHe : QUIZ.title) || QUIZ.title || ""; }
+function quizSubtitle(){ return (lang === "he" ? QUIZ.subtitleHe : QUIZ.subtitle) || QUIZ.subtitle || ""; }
+
+let currentIndex = 0;
+const answers  = new Array(QUESTIONS.length).fill("");
+const verdicts = new Array(QUESTIONS.length).fill(null); // "ok" | "soft" | "open" | null
+
+function pick(item, key){
+  if(lang === "he"){
+    const he = item[key + "He"];
+    return (he !== undefined && he !== null) ? he : item[key];
+  }
+  return item[key];
+}
+function fullQuestionText(item){
+  const main = pick(item, "q");
+  const second = (lang === "he") ? item.qHe2 : item.q2;
+  return second ? main + "\n\n" + second : main;
+}
+
+function normalizeText(s){
+  return String(s).trim().toLowerCase()
+    .replace(/[\u0591-\u05C7]/g, "")
+    .replace(/[.,;:!?'"`׳״()\[\]{}\-–—_]/g, "")
+    .replace(/\s+/g, " ").trim();
+}
+
+function checkAnswer(item, raw){
+  if(item.type === "open") return {status:"open"};
+  if(item.type === "number"){
+    const cleaned = String(raw).trim().replace(/,/g, ".");
+    const val = Number(cleaned);
+    if(cleaned === "" || !isFinite(val)) return {status:"notnum"};
+    const tol = (typeof item.tolerance === "number") ? item.tolerance : 0;
+    return {status: Math.abs(val - Number(item.answer)) <= tol ? "ok" : "soft"};
+  }
+  const accepted = Array.isArray(item.answer) ? item.answer : [item.answer];
+  const given = normalizeText(raw);
+  return {status: accepted.some(a => normalizeText(a) === given) ? "ok" : "soft"};
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, ch =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+
+function populateSelect(){
+  const sel = document.getElementById("qSelect");
+  sel.innerHTML = QUESTIONS.map((item,i)=>{
+    /* Marker shows only whether it's answered — not whether it's right. */
+    const mark = answers[i].trim() ? "• " : "";
+    let label = `${mark}${i+1}. ${pick(item,"q")}`;
+    if(label.length > 95) label = label.slice(0,93) + "…";
+    return `<option value="${i}">${escapeHtml(label)}</option>`;
+  }).join("");
+  sel.value = String(currentIndex);
+}
+
+function renderProgress(){
+  const box = document.getElementById("progress");
+  box.innerHTML = "";
+  QUESTIONS.forEach((_,i)=>{
+    const chip = document.createElement("div");
+    let cls = "pchip";
+    if(answers[i].trim()) cls += " filled";
+    if(i===currentIndex) cls += " current";
+    chip.className = cls;
+    chip.textContent = String(i+1);
+    chip.addEventListener("click", ()=>{ saveCurrent(); currentIndex = i; loadQuestion(); renderDocPreview(); });
+    box.appendChild(chip);
+  });
+}
+
+function saveCurrent(){
+  const item = QUESTIONS[currentIndex];
+  const el = (item.type === "open")
+    ? document.getElementById("answerArea")
+    : document.getElementById("answerInput");
+  answers[currentIndex] = el.value;
+}
+
+function loadQuestion(){
+  const item = QUESTIONS[currentIndex];
+  const isOpen = item.type === "open";
+
+  document.getElementById("qText").textContent = fullQuestionText(item);
+
+  const codeEl = document.getElementById("qCode");
+  if(item.code){ codeEl.textContent = item.code; codeEl.style.display = "block"; }
+  else codeEl.style.display = "none";
+
+  document.getElementById("qMeta").textContent =
+    isOpen ? T().typeOpen : (item.type==="number" ? T().typeNumber : T().typeText);
+
+  const input = document.getElementById("answerInput");
+  const area  = document.getElementById("answerArea");
+  document.getElementById("inputRow").style.display = isOpen ? "none" : "";
+  area.style.display = isOpen ? "block" : "none";
+  if(isOpen){ area.value = answers[currentIndex]; }
+  else {
+    input.value = answers[currentIndex];
+    input.setAttribute("inputmode", item.type==="number" ? "decimal" : "text");
+  }
+
+  hideHint();
+  document.getElementById("btnHint").style.display = pick(item,"hint") ? "" : "none";
+
+  const v = verdicts[currentIndex];
+  if(v === "ok")        showVerdict(T().correct, pick(item,"note") || "");
+  else if(v === "soft") showVerdict(T().soft, "");
+  else if(v === "open") showVerdict(T().openMsg, "");
+  else hideVerdict();
+
+  document.getElementById("btnPrev").disabled = (currentIndex === 0);
+  document.getElementById("btnNext").disabled = (currentIndex === QUESTIONS.length - 1);
+  populateSelect();
+  renderProgress();
+  (isOpen ? area : input).focus();
+}
+
+function hideVerdict(){
+  const v = document.getElementById("verdict");
+  v.className = "verdict"; v.innerHTML = "";
+}
+/* One faint line. No colour, no icon, no panel. */
+function showVerdict(text, note){
+  const v = document.getElementById("verdict");
+  v.className = "verdict show";
+  v.innerHTML = `<span class="mark">${escapeHtml(text)}</span>` +
+                (note ? `<span class="note">${escapeHtml(note)}</span>` : "");
+}
+function hideHint(){
+  const h = document.getElementById("hintBox");
+  h.className = "hintbox"; h.textContent = "";
+  document.getElementById("btnHint").textContent = T().hintBtn;
+}
+
+document.getElementById("btnCheck").addEventListener("click", ()=>{
+  saveCurrent();
+  const item = QUESTIONS[currentIndex];
+  const raw = answers[currentIndex];
+  if(!raw.trim()){ showVerdict(T().empty, ""); return; }
+  const res = checkAnswer(item, raw);
+  if(res.status === "notnum"){ showVerdict(T().notANumber, ""); return; }
+  verdicts[currentIndex] = res.status;
+  if(res.status === "ok") showVerdict(T().correct, pick(item,"note") || "");
+  else showVerdict(T().soft, "");
+  populateSelect();
+  renderProgress();
+  renderDocPreview();
+});
+
+document.getElementById("answerInput").addEventListener("keydown", e=>{
+  if(e.key === "Enter"){ e.preventDefault(); document.getElementById("btnCheck").click(); }
+});
+document.getElementById("answerInput").addEventListener("input", ()=>{
+  answers[currentIndex] = document.getElementById("answerInput").value;
+  renderDocPreview();
+});
+document.getElementById("answerArea").addEventListener("input", ()=>{
+  answers[currentIndex] = document.getElementById("answerArea").value;
+  verdicts[currentIndex] = answers[currentIndex].trim() ? "open" : null;
+  if(verdicts[currentIndex] === "open") showVerdict(T().openMsg, "");
+  else hideVerdict();
+  populateSelect(); renderProgress(); renderDocPreview();
+});
+
+document.getElementById("btnClear").addEventListener("click", ()=>{
+  answers[currentIndex] = "";
+  verdicts[currentIndex] = null;
+  loadQuestion();
+  renderDocPreview();
+});
+
+document.getElementById("btnHint").addEventListener("click", ()=>{
+  const h = document.getElementById("hintBox");
+  if(h.classList.contains("show")) hideHint();
+  else {
+    h.textContent = pick(QUESTIONS[currentIndex], "hint") || "";
+    h.className = "hintbox show";
+    document.getElementById("btnHint").textContent = T().hintBtnHide;
+  }
+});
+
+document.getElementById("btnPrev").addEventListener("click", ()=>{
+  if(currentIndex > 0){ saveCurrent(); currentIndex--; loadQuestion(); renderDocPreview(); }
+});
+document.getElementById("btnNext").addEventListener("click", ()=>{
+  if(currentIndex < QUESTIONS.length-1){ saveCurrent(); currentIndex++; loadQuestion(); renderDocPreview(); }
+});
+document.getElementById("qSelect").addEventListener("change", e=>{
+  saveCurrent(); currentIndex = parseInt(e.target.value,10); loadQuestion(); renderDocPreview();
+});
+
+/* ---- The text that gets copied into Google Docs ----
+   Questions and answers only. Right/wrong is not carried over. */
+function buildReport(){
+  const t = T();
+  const rtl = (lang === "he");
+  const RLM = "\u200F";
+  const date = new Date().toLocaleDateString(rtl ? "he-IL" : "en-GB");
+  const out = [];
+
+  const L = (text) => {
+    const str = String(text);
+    if(!rtl || !str){ out.push(str); return; }
+    str.split("\n").forEach(line => out.push(line ? RLM + line : ""));
+  };
+
+  L(quizTitle());
+  out.push("");
+  L(`${t.hdrDate}: ${date}`);
+  out.push("");
+
+  QUESTIONS.forEach((item,i)=>{
+    const ans = (answers[i] || "").trim();
+    L(`${t.lblQuestion} ${i+1}:`);
+    L(fullQuestionText(item));
+    if(item.code){ out.push(""); out.push("    " + item.code); }
+    out.push("");
+    L(`${t.lblAnswer}: ${ans || "\u2014"}`);
+    out.push("");
+    out.push("");
+  });
+
+  return out.join("\r\n");
+}
+
+function copyMsg(text, ok){
+  const el = document.getElementById("copyMsg");
+  el.textContent = text;
+  el.style.color = ok ? "var(--accent)" : "var(--ink-soft)";
+  setTimeout(()=>{ if(el.textContent === text) el.textContent = ""; }, 5000);
+}
+
+document.getElementById("btnCopyAll").addEventListener("click", async ()=>{
+  saveCurrent();
+  renderDocPreview();
+  const text = buildReport();
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+      copyMsg(T().copied, true);
+      return;
+    }
+    throw new Error("clipboard api unavailable");
+  }catch(e){
+    /* Fallback for file:// pages, where the async clipboard API is blocked. */
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed"; ta.style.top = "-1000px";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try{ ok = document.execCommand("copy"); }catch(_){ ok = false; }
+    document.body.removeChild(ta);
+    copyMsg(ok ? T().copied : T().copyFail, ok);
+  }
+});
+
+document.getElementById("btnResetAll").addEventListener("click", ()=>{
+  if(!confirm(T().confirmReset)) return;
+  answers.fill(""); verdicts.fill(null);
+  renderedBlocks = new Set();
+  currentIndex = 0;
+  document.getElementById("copyMsg").textContent = "";
+  loadQuestion();
+  renderDocPreview();
+});
+
+/* ---- Live preview of what will be copied ---- */
+function isAnswered(i){ return (answers[i] || "").trim().length > 0; }
+let renderedBlocks = new Set();
+
+function renderDocPreview(){
+  const t = T();
+  const page = document.getElementById("docPreview");
+  const date = new Date().toLocaleDateString(lang === "he" ? "he-IL" : "en-GB");
+  const total = QUESTIONS.length;
+  const doneCount = QUESTIONS.reduce((n,_,i)=> n + (isAnswered(i) ? 1 : 0), 0);
+
+  document.getElementById("docProgFill").style.width = `${Math.round(doneCount/total*100)}%`;
+  document.getElementById("docStatus").textContent = t.docStatus(doneCount, total);
+
+  let html = `<p class="doc-h1">${escapeHtml(quizTitle())}</p>`;
+  html += `<p class="doc-meta">${escapeHtml(t.hdrDate)}: ${escapeHtml(date)}</p>`;
+  html += `<hr class="doc-rule">`;
+
+  if(doneCount === 0){
+    html += `<p class="doc-empty">${escapeHtml(t.docEmpty)}</p>`;
+  } else {
+    QUESTIONS.forEach((item,i)=>{
+      if(!isAnswered(i)) return;
+      const isNew = !renderedBlocks.has(i);
+      const ans = (answers[i] || "").trim();
+      html += `<div class="doc-block"${isNew ? "" : ' style="animation:none"'}>`;
+      html += `<p class="dq">${escapeHtml(t.lblQuestion)} ${i+1}: ${escapeHtml(pick(item,"q"))}</p>`;
+      if(item.code) html += `<div class="dcode">${escapeHtml(item.code)}</div>`;
+      html += `<p class="da"><b>${escapeHtml(t.lblAnswer)}:</b> ${escapeHtml(ans)}</p>`;
+      html += `</div><hr class="doc-rule">`;
+    });
+  }
+  page.innerHTML = html;
+
+  QUESTIONS.forEach((_,i)=>{ if(isAnswered(i)) renderedBlocks.add(i); else renderedBlocks.delete(i); });
+  document.getElementById("btnCopyAll").disabled = (doneCount === 0);
+}
+
+document.getElementById("langBtn").addEventListener("click", ()=>{
+  saveCurrent();
+  lang = (lang === "he") ? "en" : "he";
+  const dir = (lang === "he") ? "rtl" : "ltr";
+  document.documentElement.setAttribute("lang", lang);
+  document.documentElement.setAttribute("dir", dir);
+  document.body.setAttribute("dir", dir);
+  applyStaticText();
+  loadQuestion();
+  renderDocPreview();
+});
+
+function applyStaticText(){
+  const t = T();
+  document.title = quizTitle();
+  document.getElementById("t_title").textContent = quizTitle();
+  document.getElementById("t_subtitle").textContent = quizSubtitle();
+  document.getElementById("t_pickLabel").textContent = t.pickLabel;
+  document.getElementById("btnCheck").textContent = t.check;
+  document.getElementById("btnClear").textContent = t.clear;
+  document.getElementById("btnHint").textContent = t.hintBtn;
+  document.getElementById("btnPrev").textContent = t.prev;
+  document.getElementById("btnNext").textContent = t.next;
+  document.getElementById("t_submitLabel").textContent = t.submitLabel;
+  document.getElementById("btnCopyAll").textContent = t.copyAll;
+  document.getElementById("btnResetAll").textContent = t.resetAll;
+  document.getElementById("t_submitHelp").textContent = t.submitHelp;
+  document.getElementById("langBtn").textContent = t.langBtn;
+}
+
+/* ---- init ---- */
+applyStaticText();
+populateSelect();
+loadQuestion();
+renderDocPreview();
+</script>
+</body>
+</html>
