@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>סימולטור WCSS</title>
+<style>
+  :root{
+    --bg:#F4F5F1; --card:#fff; --ink:#1E2A26; --soft:#5B6B65; --line:#DDE1DA;
+    --accent:#1E3A5F; --accent2:#16304D; --quiet:#9BA39D;
+    --tip:#FBF7EF; --tipbr:#E8DCC4;
+    --mono: ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --serif: Georgia,"Times New Roman",serif;
+    --sans: -apple-system,"Segoe UI",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:var(--bg); color:var(--ink);
+       font-family:var(--sans); line-height:1.5; font-size:14px;}
+  .wrap{max-width:1000px; margin:0 auto;}
+  h1{font-family:var(--serif); font-size:21px; margin:0 0 3px;}
+  .sub{color:var(--soft); font-size:13px; margin:0 0 12px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:10px;
+        padding:14px 16px; margin-bottom:12px;}
+  .card h2{font-family:var(--serif); font-size:15.5px; margin:0 0 9px;
+           border-bottom:1px solid var(--line); padding-bottom:6px;}
+  .controls{display:flex; gap:9px; flex-wrap:wrap; align-items:center;}
+  label.inline{font-size:13.5px; color:var(--soft); display:flex; align-items:center; gap:6px;}
+  select{font-family:var(--sans); font-size:14px; padding:7px 10px; border-radius:7px;
+         border:1.5px solid var(--line); background:#fff; color:var(--ink);}
+  button{font-family:var(--sans); font-size:13.5px; font-weight:600;
+         background:var(--accent); color:#fff; border:none; border-radius:8px;
+         padding:9px 16px; cursor:pointer;}
+  button:hover:not(:disabled){background:var(--accent2);}
+  button:disabled{background:#C7CCC5; color:#8B948C; cursor:not-allowed;}
+  button.ghost{background:#fff; color:var(--accent); border:1.5px solid var(--accent);}
+  button.ghost:hover:not(:disabled){background:#EEF2F6;}
+  .panels{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start;}
+  .panel{flex:1 1 430px; min-width:330px;}
+  svg{width:100%; height:auto; display:block; border:1px solid var(--line);
+      border-radius:8px; background:#FCFDFB;}
+  .readout{display:flex; gap:16px; flex-wrap:wrap; align-items:center;
+           margin-top:9px; font-size:13.5px;}
+  .big{font-family:var(--mono); font-size:19px; font-weight:700; color:var(--accent);}
+  .badge{font-family:var(--mono); font-size:12.5px; background:#EEF1EC;
+         border:1px solid var(--line); border-radius:5px; padding:2px 8px;}
+  table{border-collapse:collapse; font-size:13px; width:100%;}
+  th,td{border:1px solid var(--line); padding:3px 7px; text-align:center;}
+  th{background:#F1F3EE; font-size:11.5px; font-weight:600;}
+  td.mono{font-family:var(--mono);}
+  .tip{background:var(--tip); border:1px solid var(--tipbr); border-radius:8px;
+       padding:9px 12px; font-size:13.5px; margin-bottom:10px;}
+  .note{font-size:12.5px; color:var(--soft);}
+  .scroll{max-height:190px; overflow-y:auto;}
+  .dsnote{font-size:12.5px; color:var(--soft); margin-top:7px;}
+  .pick-info{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px;
+             color:#1E3A5F; font-weight:700; min-height:17px;}
+</style>
+</head>
+<body dir="rtl">
+<div class="wrap">
+  <h1>‏סימולטור WCSS</h1>
+  <p class="sub">בחרו דאטהסט, בחרו K, והריצו. כל הרצה מוסיפה נקודה לגרף — ואחרי מספיק הרצות הצורה שתתקבל תספר לכם משהו.</p>
+
+  <div class="card">
+    <div class="tip">
+      ‏בכל הרצה האלגוריתם מאותחל בשיטת <b>K-Means++</b>, רץ עד להתכנסות, ואז מחושב ה-<b>WCSS</b>:
+      סכום ריבועי המרחקים של כל נקודה מהמרכז של האשכול שלה.<br>
+      <span class="note">‏נקודות ההתחלה אקראיות, ולכן אותו K יכול לתת תוצאות שונות. הגרף שומר לכל K את התוצאה הטובה ביותר שהשגתם.</span>
+    </div>
+    <div class="controls">
+      <label class="inline">‏דאטהסט:
+        <select id="dsSel"></select>
+      </label>
+      <label class="inline">‏מספר אשכולות K:
+        <select id="kSel"></select>
+      </label>
+      <button id="btnRun">‏הרץ</button>
+      <button class="ghost" id="btnRun10">‏הרץ 10 פעמים</button>
+      <button class="ghost" id="btnReset">‏נקה את הדאטהסט הזה</button>
+    </div>
+    <p class="dsnote" id="dsNote"></p>
+    <div class="readout">
+      <span>‏WCSS בהרצה האחרונה: <span class="big" id="curWcss">—</span></span>
+      <span class="note">‏איטרציות: <span class="badge" id="curIters">—</span></span>
+      <span class="note">‏הרצות בדאטהסט הזה: <span class="badge" id="runCount">0</span></span>
+    </div>
+  </div>
+
+  <div class="panels">
+    <div class="panel card">
+      <h2>‏האשכולות שהתקבלו</h2>
+      <svg id="scatter" viewBox="0 0 460 330"></svg>
+      <p class="note" id="clusterInfo" style="margin-top:8px;"></p>
+    </div>
+
+    <div class="panel card">
+      <h2>‏WCSS כפונקציה של K</h2>
+      <svg id="elbow" viewBox="0 0 460 330"></svg>
+      <p class="note" style="margin-top:8px;">
+        ‏כל נקודה חיוורת היא הרצה בודדת. הקו מחבר את התוצאה הטובה ביותר לכל K.
+        <br>‏לחצו על נקודה כהה בגרף כדי לראות את הערך שלה.
+      </p>
+      <p class="note pick-info" id="pickInfo" style="margin-top:6px;"></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>‏טבלת התוצאות</h2>
+    <div class="scroll">
+      <table id="resultTable"></table>
+    </div>
+    <p class="note" style="margin-top:8px;">
+      ‏עמודת ״השיפור״ מראה כמה ה-WCSS ירד כשעברתם מה-K הקודם ל-K הזה. שווה להסתכל עליה.
+    </p>
+  </div>
+</div>
+
+<script>
+/* ---------------- datasets ---------------- */
+const DATASETS = [
+  {
+    name: "מזונות — קלוריות וחלבון",
+    xLabel: "קלוריות", yLabel: "חלבון",
+    note: "אותם מזונות שהכרתם בסימולטור הקודם.",
+    pts: [
+      {n:"חסה", x:15, y:1.4},   {n:"מלפפון", x:16, y:0.7}, {n:"סלרי", x:14, y:0.7},
+      {n:"חזה עוף", x:165, y:31}, {n:"חזה הודו", x:135, y:30}, {n:"טונה", x:130, y:28},
+      {n:"סלמון", x:208, y:20},
+      {n:"צ׳יפס", x:312, y:3.4}, {n:"לחם לבן", x:265, y:9},
+      {n:"בייגל", x:250, y:10},  {n:"בייגלה", x:300, y:8}
+    ]
+  },
+  {
+    name: "דאטהסט ב׳",
+    xLabel: "תכונה 1", yLabel: "תכונה 2",
+    note: "נתונים אנונימיים. גלו בעצמכם לכמה קבוצות הם מתחלקים.",
+    pts: [
+      {n:"1", x:24, y:23}, {n:"2", x:30, y:18}, {n:"3", x:31, y:17}, {n:"4", x:27, y:22},
+      {n:"5", x:41, y:21}, {n:"6", x:41, y:48}, {n:"7", x:38, y:28}, {n:"8", x:40, y:53},
+      {n:"9", x:30, y:49}, {n:"10", x:34, y:54}, {n:"11", x:66, y:57}, {n:"12", x:65, y:63},
+      {n:"13", x:61, y:57}, {n:"14", x:57, y:66}, {n:"15", x:54, y:60}, {n:"16", x:73, y:46},
+      {n:"17", x:65, y:39}, {n:"18", x:82, y:35}, {n:"19", x:70, y:43}, {n:"20", x:69, y:28}
+    ]
+  },
+  {
+    name: "דאטהסט ג׳",
+    xLabel: "תכונה 1", yLabel: "תכונה 2",
+    note: "נתונים אנונימיים. גלו בעצמכם לכמה קבוצות הם מתחלקים.",
+    pts: [
+      {n:"1", x:57, y:41}, {n:"2", x:55, y:30}, {n:"3", x:67, y:21}, {n:"4", x:32, y:30},
+      {n:"5", x:16, y:20}, {n:"6", x:29, y:36}, {n:"7", x:19, y:35}, {n:"8", x:26, y:44}
+    ]
+  },
+  {
+    name: "דאטהסט ד׳",
+    xLabel: "תכונה 1", yLabel: "תכונה 2",
+    note: "נתונים אנונימיים. גלו בעצמכם לכמה קבוצות הם מתחלקים.",
+    pts: [
+      {n:"1", x:68, y:45}, {n:"2", x:46, y:53}, {n:"3", x:44, y:47}, {n:"4", x:58, y:56},
+      {n:"5", x:23, y:24}, {n:"6", x:28, y:22}, {n:"7", x:21, y:31}, {n:"8", x:19, y:17},
+      {n:"9", x:15, y:46}, {n:"10", x:14, y:46}, {n:"11", x:9, y:52}, {n:"12", x:16, y:47},
+      {n:"13", x:65, y:60}, {n:"14", x:69, y:58}, {n:"15", x:77, y:60}, {n:"16", x:67, y:55},
+      {n:"17", x:19, y:52}, {n:"18", x:23, y:71}, {n:"19", x:17, y:72}, {n:"20", x:28, y:60}
+    ]
+  },
+  {
+    name: "דאטהסט ה׳",
+    xLabel: "תכונה 1", yLabel: "תכונה 2",
+    note: "נתונים אנונימיים. גלו בעצמכם לכמה קבוצות הם מתחלקים.",
+    pts: [
+      {n:"1", x:60, y:51}, {n:"2", x:56, y:41}, {n:"3", x:58, y:37}, {n:"4", x:51, y:45},
+      {n:"5", x:70, y:33}, {n:"6", x:68, y:26}, {n:"7", x:62, y:21}, {n:"8", x:66, y:21},
+      {n:"9", x:32, y:27}, {n:"10", x:30, y:37}, {n:"11", x:21, y:39}, {n:"12", x:28, y:38}
+    ]
+  }
+];
+const MAX_K = 8;
+const COLORS = ["#2563EB","#DC2626","#16A34A","#9333EA","#EA580C","#0891B2","#CA8A04","#BE185D"];
+
+let dsIdx = 0;
+const state = DATASETS.map(()=>({runs:[], bestByK:{}, current:null, pickedK:null}));
+const DS  = () => DATASETS[dsIdx];
+const ST  = () => state[dsIdx];
+const d2  = (a,b) => (a.x-b.x)**2 + (a.y-b.y)**2;
+
+/* ---------------- K-Means++ ---------------- */
+function kmeansPlusPlusInit(pts, k){
+  const cents = [{x:pts[Math.floor(Math.random()*pts.length)].x, y:pts[Math.floor(Math.random()*pts.length)].y}];
+  // the first pick must be a single point, so take one index for both coords
+  const first = pts[Math.floor(Math.random()*pts.length)];
+  cents[0] = {x:first.x, y:first.y};
+  while(cents.length < k){
+    const w = pts.map(p => Math.min(...cents.map(c => d2(p,c))));
+    const total = w.reduce((s,x)=>s+x, 0);
+    if(total === 0){
+      const r = pts[Math.floor(Math.random()*pts.length)];
+      cents.push({x:r.x, y:r.y});
+      continue;
+    }
+    let r = Math.random()*total, acc = 0, chosen = pts[pts.length-1];
+    for(let i=0;i<pts.length;i++){
+      acc += w[i];
+      if(acc >= r){ chosen = pts[i]; break; }
+    }
+    cents.push({x:chosen.x, y:chosen.y});
+  }
+  return cents;
+}
+
+function assignAll(pts, cents){
+  return pts.map(p=>{
+    let best = 0, bd = Infinity;
+    cents.forEach((c,i)=>{ const d = d2(p,c); if(d < bd){ bd = d; best = i; } });
+    return best;
+  });
+}
+
+function runKMeans(k){
+  const pts = DS().pts;
+  let cents = kmeansPlusPlusInit(pts, k);
+  let assign = assignAll(pts, cents), iters = 0;
+  for(let step=0; step<100; step++){
+    const next = cents.map((c,i)=>{
+      const members = pts.filter((_,j)=>assign[j]===i);
+      if(!members.length) return c;
+      return {
+        x: members.reduce((s,p)=>s+p.x,0)/members.length,
+        y: members.reduce((s,p)=>s+p.y,0)/members.length
+      };
+    });
+    const nextAssign = assignAll(pts, next);
+    iters = step + 1;
+    const settled = nextAssign.every((v,i)=>v===assign[i]);
+    cents = next; assign = nextAssign;
+    if(settled) break;
+  }
+  const wcss = pts.reduce((s,p,i)=> s + d2(p, cents[assign[i]]), 0);
+  return {cents, assign, wcss, iters};
+}
+
+/* ---------------- axis helpers ---------------- */
+/* Nearest tidy step (1, 2, 2.5 or 5 times a power of ten) at or above v,
+   so axis labels land on round numbers. */
+function niceStep(v){
+  if(v <= 0) return 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(v)));
+  const n = v / mag;
+  const mult = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
+  return mult * mag;
+}
+function niceMax(v){
+  if(v <= 0) return 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(v)));
+  return Math.ceil(v/(mag/2))*(mag/2);
+}
+function axisInfo(){
+  const pts = DS().pts;
+  return {
+    xMax: niceMax(Math.max(...pts.map(p=>p.x))*1.12),
+    yMax: niceMax(Math.max(...pts.map(p=>p.y))*1.12)
+  };
+}
+
+/* ---------------- scatter ---------------- */
+function drawScatter(){
+  const W=460, H=330, PAD={l:50,r:14,t:14,b:38};
+  const pw = W-PAD.l-PAD.r, ph = H-PAD.t-PAD.b;
+  const {xMax, yMax} = axisInfo();
+  const X = v => PAD.l + (v/xMax)*pw;
+  const Y = v => H-PAD.b - (v/yMax)*ph;
+  const cur = ST().current;
+  let s = "";
+  for(let i=0;i<=5;i++){
+    const xv = xMax*i/5, yv = yMax*i/5;
+    s += `<line x1="${X(xv)}" y1="${Y(0)}" x2="${X(xv)}" y2="${PAD.t}" stroke="#EEF1EC"/>`;
+    s += `<text x="${X(xv)}" y="${H-PAD.b+14}" font-size="9" fill="#5B6B65" text-anchor="middle" font-family="ui-monospace,monospace">${Math.round(xv)}</text>`;
+    s += `<line x1="${PAD.l}" y1="${Y(yv)}" x2="${W-PAD.r}" y2="${Y(yv)}" stroke="#EEF1EC"/>`;
+    s += `<text x="${PAD.l-7}" y="${Y(yv)+3}" font-size="9" fill="#5B6B65" text-anchor="end" font-family="ui-monospace,monospace">${Math.round(yv)}</text>`;
+  }
+  s += `<line x1="${PAD.l}" y1="${Y(0)}" x2="${W-PAD.r}" y2="${Y(0)}" stroke="#5B6B65" stroke-width="1.2"/>`;
+  s += `<line x1="${PAD.l}" y1="${Y(0)}" x2="${PAD.l}" y2="${PAD.t}" stroke="#5B6B65" stroke-width="1.2"/>`;
+  s += `<text x="${PAD.l+pw/2}" y="${H-6}" font-size="10.5" fill="#1E2A26" text-anchor="middle">${DS().xLabel}</text>`;
+  s += `<text x="13" y="${PAD.t+ph/2}" font-size="10.5" fill="#1E2A26" text-anchor="middle" transform="rotate(-90 13 ${PAD.t+ph/2})">${DS().yLabel}</text>`;
+
+  if(cur){
+    DS().pts.forEach((p,i)=>{
+      const c = cur.cents[cur.assign[i]];
+      s += `<line x1="${X(p.x)}" y1="${Y(p.y)}" x2="${X(c.x)}" y2="${Y(c.y)}" stroke="${COLORS[cur.assign[i]%COLORS.length]}" stroke-width="1" stroke-dasharray="3 3" opacity=".5"/>`;
+    });
+  }
+  DS().pts.forEach((p,i)=>{
+    const col = cur ? COLORS[cur.assign[i]%COLORS.length] : "#9CA3AF";
+    s += `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="4.5" fill="${col}"/>`;
+    s += `<text x="${X(p.x)+6}" y="${Y(p.y)-4}" font-size="8.5" fill="#5B6B65">${p.n}</text>`;
+  });
+  if(cur){
+    cur.cents.forEach((c,i)=>{
+      const col = COLORS[i%COLORS.length];
+      s += `<rect x="${X(c.x)-5.5}" y="${Y(c.y)-5.5}" width="11" height="11" fill="none" stroke="${col}" stroke-width="2.2" transform="rotate(45 ${X(c.x)} ${Y(c.y)})"/>`;
+    });
+  }
+  document.getElementById("scatter").innerHTML = s;
+}
+
+/* ---------------- elbow chart ---------------- */
+function drawElbow(){
+  const W=460, H=330, PAD={l:78,r:16,t:16,b:40};
+  const pw = W-PAD.l-PAD.r, ph = H-PAD.t-PAD.b;
+  const best = ST().bestByK;
+  const ks = Object.keys(best).map(Number);
+  const maxW = ks.length ? Math.max(...ks.map(k=>best[k])) : 1;
+  /* Round the axis up to a tidy step so the labels read 3,000 / 6,000 / 9,000
+     rather than 3,034 / 6,067 — and never abbreviate them to "3k". */
+  const step = niceStep((maxW > 0 ? maxW*1.08 : 1) / 4);
+  const yMax = Math.max(step, Math.ceil((maxW > 0 ? maxW*1.05 : 1) / step) * step);
+  const X = k => PAD.l + ((k-1)/(MAX_K-1))*pw;
+  const Y = w => H-PAD.b - (w/yMax)*ph;
+
+  let s = "";
+  for(let k=1;k<=MAX_K;k++){
+    s += `<line x1="${X(k)}" y1="${H-PAD.b}" x2="${X(k)}" y2="${PAD.t}" stroke="#EEF1EC"/>`;
+    s += `<text x="${X(k)}" y="${H-PAD.b+15}" font-size="10" fill="#5B6B65" text-anchor="middle" font-family="ui-monospace,monospace">${k}</text>`;
+  }
+  for(let v=0; v<=yMax+1e-9; v+=step){
+    const y = Y(v);
+    s += `<line x1="${PAD.l}" y1="${y}" x2="${W-PAD.r}" y2="${y}" stroke="#EEF1EC"/>`;
+    s += `<text x="${PAD.l-7}" y="${y+3}" font-size="9" fill="#5B6B65" text-anchor="end" font-family="ui-monospace,monospace">${Math.round(v).toLocaleString("en-US")}</text>`;
+  }
+  s += `<line x1="${PAD.l}" y1="${H-PAD.b}" x2="${W-PAD.r}" y2="${H-PAD.b}" stroke="#5B6B65" stroke-width="1.2"/>`;
+  s += `<line x1="${PAD.l}" y1="${H-PAD.b}" x2="${PAD.l}" y2="${PAD.t}" stroke="#5B6B65" stroke-width="1.2"/>`;
+  s += `<text x="${PAD.l+pw/2}" y="${H-6}" font-size="10.5" fill="#1E2A26" text-anchor="middle">K — מספר אשכולות</text>`;
+  s += `<text x="14" y="${PAD.t+ph/2}" font-size="10.5" fill="#1E2A26" text-anchor="middle" transform="rotate(-90 14 ${PAD.t+ph/2})">WCSS</text>`;
+
+  if(!ks.length){
+    s += `<text x="${PAD.l+pw/2}" y="${PAD.t+ph/2}" font-size="12" fill="#9BA39D" text-anchor="middle">הריצו כדי להתחיל לאסוף נקודות</text>`;
+    document.getElementById("elbow").innerHTML = s;
+    return;
+  }
+  ST().runs.forEach(r=>{
+    s += `<circle cx="${X(r.k)}" cy="${Y(r.wcss)}" r="2.6" fill="#9BA39D" opacity=".45"/>`;
+  });
+  const sorted = ks.sort((a,b)=>a-b);
+  if(sorted.length > 1){
+    const line = sorted.map(k=>`${X(k)},${Y(best[k])}`).join(" ");
+    s += `<polyline points="${line}" fill="none" stroke="#1E3A5F" stroke-width="2" stroke-linejoin="round"/>`;
+  }
+  const picked = ST().pickedK;
+  sorted.forEach(k=>{
+    const on = (k === picked);
+    if(on) s += `<circle cx="${X(k)}" cy="${Y(best[k])}" r="9" fill="none" stroke="#1E3A5F" stroke-width="1.6" opacity=".45"/>`;
+    s += `<circle cx="${X(k)}" cy="${Y(best[k])}" r="${on ? 6 : 4.5}" fill="#1E3A5F"/>`;
+  });
+
+  /* A generous transparent target over each point, so the value is easy to
+     hit with a mouse and still reachable with a finger. */
+  sorted.forEach(k=>{
+    s += `<circle class="hit" data-k="${k}" cx="${X(k)}" cy="${Y(best[k])}" r="15" fill="transparent" style="cursor:pointer">`
+       + `<title>K=${k} \u00b7 WCSS = ${Math.round(best[k]).toLocaleString("en-US")}</title></circle>`;
+  });
+
+  if(picked !== null && best[picked] !== undefined){
+    const runsAtK = ST().runs.filter(r=>r.k === picked).length;
+    const val = Math.round(best[picked]).toLocaleString("en-US");
+    const bw = Math.max(108, 15 + val.length*7.6), bh = 38;
+    const px = X(picked), py = Y(best[picked]);
+    /* Keep the callout inside the chart: flip it below the point when it would
+       run off the top, and clamp it horizontally. */
+    let bx = Math.min(Math.max(px - bw/2, PAD.l + 2), W - PAD.r - bw - 2);
+    let by = py - bh - 14;
+    if(by < PAD.t + 2) by = py + 14;
+    s += `<g pointer-events="none">`
+       + `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="7" fill="#1E3A5F" opacity=".96"/>`
+       + `<text x="${bx + bw/2}" y="${by + 15}" font-size="11" fill="#FFFFFF" text-anchor="middle" font-family="ui-monospace,monospace">K = ${picked}</text>`
+       + `<text x="${bx + bw/2}" y="${by + 30}" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle" font-family="ui-monospace,monospace">WCSS = ${val}</text>`
+       + `</g>`;
+    const info = document.getElementById("pickInfo");
+    if(info) info.textContent = `\u200fK = ${picked}\u200f · WCSS = ${val}\u200f · ${runsAtK} ${runsAtK===1 ? "הרצה" : "הרצות"} ב-K הזה`;
+  } else {
+    const info = document.getElementById("pickInfo");
+    if(info) info.textContent = "";
+  }
+
+  document.getElementById("elbow").innerHTML = s;
+}
+
+/* ---------------- results table ---------------- */
+function drawTable(){
+  const best = ST().bestByK;
+  const ks = Object.keys(best).map(Number).sort((a,b)=>a-b);
+  let h = `<tr><th>K</th><th>‏WCSS הטוב ביותר</th><th>השיפור מול K הקודם</th><th>הרצות</th></tr>`;
+  if(!ks.length){
+    h += `<tr><td colspan="4" class="note" style="padding:9px;">‏עדיין לא בוצעו הרצות בדאטהסט הזה.</td></tr>`;
+  } else {
+    let prev = null;
+    ks.forEach(k=>{
+      const w = best[k];
+      const n = ST().runs.filter(r=>r.k===k).length;
+      const gain = (prev === null) ? "—" : Math.round(prev - w).toLocaleString("en-US");
+      h += `<tr><td class="mono">${k}</td><td class="mono">${Math.round(w).toLocaleString("en-US")}</td>` +
+           `<td class="mono">${gain}</td><td class="mono">${n}</td></tr>`;
+      prev = w;
+    });
+  }
+  document.getElementById("resultTable").innerHTML = h;
+}
+
+/* ---------------- actions ---------------- */
+function refreshReadout(res){
+  document.getElementById("curWcss").textContent = res ? Math.round(res.wcss).toLocaleString("en-US") : "—";
+  document.getElementById("curIters").textContent = res ? res.iters : "—";
+  document.getElementById("runCount").textContent = ST().runs.length;
+  if(!res){ document.getElementById("clusterInfo").textContent = ""; return; }
+  const groups = res.cents.map((_,i)=>
+    DS().pts.filter((_,j)=>res.assign[j]===i).map(p=>p.n).join(", ")
+  );
+  const empty = groups.some(g=>!g.length);
+  document.getElementById("clusterInfo").innerHTML =
+    groups.filter(g=>g.length).map((g,i)=>
+      `<span style="color:${COLORS[i%COLORS.length]};font-weight:700">C${i+1}</span>: ${g}`).join("<br>") +
+    (empty ? `<br><span class="note">‏שימו לב: אשכול אחד נותר ריק.</span>` : "");
+}
+
+function doRun(k){
+  const res = runKMeans(k);
+  ST().current = res;
+  ST().runs.push({k, wcss: res.wcss});
+  if(ST().bestByK[k] === undefined || res.wcss < ST().bestByK[k]) ST().bestByK[k] = res.wcss;
+  refreshReadout(res);
+  drawScatter(); drawElbow(); drawTable();
+}
+
+/* The chart's markup is replaced on each redraw, so the listener lives on the
+   <svg> itself and reads the data-k of whatever target was hit. */
+document.getElementById("elbow").addEventListener("click", e=>{
+  const hit = e.target.closest(".hit");
+  const k = hit ? Number(hit.dataset.k) : null;
+  ST().pickedK = (k !== null && k === ST().pickedK) ? null : k;
+  drawElbow();
+});
+
+document.getElementById("btnRun").addEventListener("click", ()=>{
+  doRun(parseInt(document.getElementById("kSel").value, 10));
+});
+document.getElementById("btnRun10").addEventListener("click", ()=>{
+  const k = parseInt(document.getElementById("kSel").value, 10);
+  for(let i=0;i<10;i++) doRun(k);
+});
+document.getElementById("btnReset").addEventListener("click", ()=>{
+  state[dsIdx] = {runs:[], bestByK:{}, current:null, pickedK:null};
+  refreshReadout(null);
+  drawScatter(); drawElbow(); drawTable();
+});
+
+document.getElementById("dsSel").addEventListener("change", e=>{
+  dsIdx = parseInt(e.target.value, 10);
+  document.getElementById("dsNote").textContent = DS().note;
+  refreshReadout(ST().current);          // each dataset keeps its own history
+  drawScatter(); drawElbow(); drawTable();
+});
+
+/* ---------------- init ---------------- */
+(function init(){
+  document.getElementById("dsSel").innerHTML =
+    DATASETS.map((d,i)=>`<option value="${i}">${d.name}</option>`).join("");
+  let h = "";
+  for(let k=1;k<=MAX_K;k++) h += `<option value="${k}">${k}</option>`;
+  const ks = document.getElementById("kSel");
+  ks.innerHTML = h; ks.value = "2";
+  document.getElementById("dsNote").textContent = DS().note;
+  drawScatter(); drawElbow(); drawTable();
+})();
+</script>
+</body>
+</html>
