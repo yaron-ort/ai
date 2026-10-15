@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>תרגול WCSS</title>
+<style>
+  :root{
+    --bg:#F4F5F1; --card:#fff; --ink:#1E2A26; --soft:#5B6B65; --line:#DDE1DA;
+    --accent:#1E3A5F; --accent2:#16304D; --quiet:#9BA39D;
+    --ok:#2F7D52; --okbg:#F1F8F3; --okbr:#CFE6D8;
+    --c1:#DC2626; --c2:#2563EB;
+    --tip:#FBF7EF; --tipbr:#E8DCC4;
+    --mono: ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --serif: Georgia,"Times New Roman",serif;
+    --sans: -apple-system,"Segoe UI",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:18px; background:var(--bg); color:var(--ink);
+       font-family:var(--sans); line-height:1.5; font-size:14px;}
+  .wrap{max-width:900px; margin:0 auto;}
+  h1{font-family:var(--serif); font-size:21px; margin:0 0 3px;}
+  .sub{color:var(--soft); font-size:13px; margin:0 0 14px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:10px;
+        padding:16px 18px; margin-bottom:12px;}
+  .card h2{font-family:var(--serif); font-size:16px; margin:0 0 10px;
+           border-bottom:1px solid var(--line); padding-bottom:7px;}
+  .card h3{font-family:var(--serif); font-size:14.5px; margin:16px 0 6px;}
+  .formula{background:var(--tip); border:1px solid var(--tipbr); border-radius:8px;
+           padding:10px 13px; font-size:14px; margin-bottom:12px;}
+  .formula code{font-family:var(--mono); font-size:13.5px; direction:ltr; display:inline-block;}
+  .layout{display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start;}
+  svg{border:1px solid var(--line); border-radius:7px; background:#FCFDFB; flex:none;}
+  table{border-collapse:collapse; font-size:13.5px;}
+  th,td{border:1px solid var(--line); padding:4px 7px; text-align:center;}
+  th{background:#F1F3EE; font-size:12px; font-weight:600;}
+  td.lbl{font-weight:700; background:#FAFBF8; white-space:nowrap; text-align:right;}
+  td.lbl small{font-family:var(--mono); font-weight:400; color:var(--soft);}
+  td.calc{font-family:var(--mono); font-size:12.5px; color:var(--soft); white-space:nowrap;}
+  td.cellwrap{white-space:nowrap;}
+  input.cell{width:82px; font-family:var(--mono); font-size:13.5px; text-align:center;
+             padding:5px 4px; border:1.5px solid var(--line); border-radius:6px;
+             background:#fff; color:var(--ink);}
+  input.cell:focus{outline:none; border-color:var(--accent);}
+  input.cell.done{background:var(--okbg); border-color:var(--okbr); color:var(--ok); font-weight:700;}
+  input.cell:disabled{background:#F5F6F3; color:#B6BDB5;}
+  .tick{display:inline-block; margin-inline-start:5px; color:var(--ok);
+        font-weight:700; font-size:14px; opacity:0; transform:scale(.6);
+        transition:opacity .18s ease, transform .18s ease;}
+  .tick.on{opacity:1; transform:scale(1);}
+  button{font-family:var(--sans); font-size:13.5px; font-weight:600;
+         background:var(--accent); color:#fff; border:none; border-radius:8px;
+         padding:9px 16px; cursor:pointer;}
+  button:hover:not(:disabled){background:var(--accent2);}
+  button:disabled{background:#C7CCC5; color:#8B948C; cursor:not-allowed;}
+  button.ghost{background:#fff; color:var(--accent); border:1.5px solid var(--accent);}
+  button.ghost:hover:not(:disabled){background:#EEF2F6;}
+  .bar{display:flex; gap:9px; flex-wrap:wrap; align-items:center; margin-top:12px;}
+  .msg{font-size:13px; color:var(--quiet); margin-top:8px; min-height:19px;}
+  .msg.good{color:var(--ok); font-weight:600;}
+  .sumrow{display:flex; gap:9px; align-items:center; flex-wrap:wrap; font-size:13.5px; margin-top:8px;}
+  .step{padding:10px 12px; border:1px solid var(--line); border-radius:8px; margin-top:10px;}
+  .step.locked{opacity:.45;}
+  .tag1{color:var(--c1);} .tag2{color:var(--c2);}
+  .note{font-size:12.5px; color:var(--soft);}
+  .final{background:var(--okbg); border:1px solid var(--okbr); border-radius:8px;
+         padding:12px 14px; font-size:14.5px; color:#1F5637; margin-top:10px; display:none;}
+  .final.on{display:block;}
+  .final b{font-size:16px;}
+  .copymsg{font-size:13px; font-family:var(--mono);}
+</style>
+</head>
+<body dir="rtl">
+<div class="wrap">
+  <h1>‏תרגול WCSS</h1>
+  <p class="sub">נחשב את מידת ה״צפיפות״ של האשכולות — צעד אחר צעד, עם בדיקה בכל שלב.</p>
+
+  <div class="card">
+    <div class="formula">
+      ‏<b>WCSS</b> הוא סכום ריבועי המרחקים של כל נקודה מהמרכז של האשכול שלה.<br>
+      <code>WCSS = Σ ( (x − x<sub>מרכז</sub>)² + (y − y<sub>מרכז</sub>)² )</code><br>
+      <span class="note">‏שימו לב: כאן <b>לא</b> מוציאים שורש. עובדים עם ריבוע המרחק, ולכן כל התוצאות הן מספרים שלמים ונוחים.</span>
+    </div>
+    <p class="note" style="margin:0;">‏ככל שה-WCSS קטן יותר, הנקודות צמודות יותר למרכזים שלהן — כלומר האשכולות ״הדוקים״ יותר.</p>
+  </div>
+
+  <!-- ===================== EXERCISE A ===================== -->
+  <div class="card">
+    <h2>‏תרגיל א׳ — שני ממדים, צעד אחר צעד</h2>
+    <p class="note">‏שישה מזונות חולקו לשני אשכולות. לכל אשכול כבר חושב המרכז. חשבו את ה-WCSS.</p>
+
+    <div class="layout" style="margin-top:10px;">
+      <svg id="plotA" width="280" height="280" viewBox="0 0 280 280"></svg>
+      <div>
+        <table>
+          <tr><th>מזון</th><th>קלוריות</th><th>חלבון</th><th>אשכול</th></tr>
+          <tr><td class="lbl">טונה</td><td>6</td><td>4</td><td class="tag1">C1</td></tr>
+          <tr><td class="lbl">לחם</td><td>5</td><td>0</td><td class="tag1">C1</td></tr>
+          <tr><td class="lbl">גבינה</td><td>7</td><td>5</td><td class="tag1">C1</td></tr>
+          <tr><td class="lbl">חסה</td><td>1</td><td>3</td><td class="tag2">C2</td></tr>
+          <tr><td class="lbl">מלפפון</td><td>1</td><td>7</td><td class="tag2">C2</td></tr>
+          <tr><td class="lbl">עגבנייה</td><td>1</td><td>8</td><td class="tag2">C2</td></tr>
+        </table>
+        <p class="note" style="font-family:var(--mono); margin-top:8px;">
+          <span class="tag1">‏C1 = (6, 3)</span><br>
+          <span class="tag2">‏C2 = (1, 6)</span>
+        </p>
+      </div>
+    </div>
+
+    <h3>‏שלב 1 — ריבוע המרחק של כל מזון מהמרכז שלו</h3>
+    <table id="tableA"></table>
+    <p class="msg" id="msgA"></p>
+
+    <div class="step locked" id="stepSum">
+      <h3 style="margin-top:0;">‏שלב 2 — סכום לכל אשכול</h3>
+      <div class="sumrow">
+        <span class="tag1">‏סכום C1 =</span> <input class="cell" id="sum1" inputmode="numeric" disabled><span class="tick" id="tsum1">✓</span>
+        &nbsp;&nbsp;
+        <span class="tag2">‏סכום C2 =</span> <input class="cell" id="sum2" inputmode="numeric" disabled><span class="tick" id="tsum2">✓</span>
+        <button id="btnSum" disabled>בדיקה</button>
+      </div>
+      <p class="msg" id="msgSum"></p>
+    </div>
+
+    <div class="step locked" id="stepTotal">
+      <h3 style="margin-top:0;">‏שלב 3 — ה-WCSS הכולל</h3>
+      <div class="sumrow">
+        <span>‏WCSS =</span> <input class="cell" id="total" inputmode="numeric" disabled><span class="tick" id="ttotal">✓</span>
+        <button id="btnTotal" disabled>בדיקה</button>
+      </div>
+      <p class="msg" id="msgTotal"></p>
+    </div>
+
+    <div class="final" id="finalA"></div>
+  </div>
+
+  <!-- ===================== EXERCISE B ===================== -->
+  <div class="card">
+    <h2>‏תרגיל ב׳ — ממד אחד, בחישוב אחד</h2>
+    <p class="note">‏הפעם יש רק תכונה אחת — קלוריות — ואשכול אחד בלבד. חשבו את ה-WCSS בבת אחת.</p>
+
+    <table style="margin-top:10px;">
+      <tr><th>מזון</th><th>קלוריות</th></tr>
+      <tr><td class="lbl">מלפפון</td><td>2</td></tr>
+      <tr><td class="lbl">גזר</td><td>4</td></tr>
+      <tr><td class="lbl">תפוח</td><td>9</td></tr>
+      <tr><td class="lbl">בננה</td><td>13</td></tr>
+    </table>
+    <p class="note" style="font-family:var(--mono); margin-top:8px;">‏מרכז האשכול = 7</p>
+
+    <div class="sumrow">
+      <span>‏WCSS =</span> <input class="cell" id="oneD" inputmode="numeric"><span class="tick" id="tOneD">✓</span>
+      <button id="btnOneD">בדיקה</button>
+      <button class="ghost" id="btnOneDHint">הצג רמז</button>
+    </div>
+    <p class="msg" id="msgOneD"></p>
+    <p class="note" id="hintOneD" style="display:none; font-style:italic;">
+      ‏לכל מזון: חסרו 7 מהערך שלו, העלו בריבוע, וחברו את ארבע התוצאות.
+    </p>
+    <div class="final" id="finalB"></div>
+  </div>
+
+
+  <!-- ===================== EXERCISE C ===================== -->
+  <div class="card">
+    <h2>‏תרגיל ג׳ — שני ממדים, בלי רמזים</h2>
+    <p class="note">‏אותו רעיון כמו בתרגיל א׳, אבל הפעם עמודת החישוב מוסתרת. נסו לבד — ואם נתקעתם, אפשר לחשוף את החישוב של שתי השורות הראשונות בלבד.</p>
+
+    <div class="layout" style="margin-top:10px;">
+      <svg id="plotC" width="280" height="280" viewBox="0 0 280 280"></svg>
+      <div>
+        <table>
+          <tr><th>מזון</th><th>קלוריות</th><th>חלבון</th><th>אשכול</th></tr>
+          <tr><td class="lbl">ביצה</td><td>2</td><td>1</td><td class="tag1">C1</td></tr>
+          <tr><td class="lbl">טופו</td><td>4</td><td>3</td><td class="tag1">C1</td></tr>
+          <tr><td class="lbl">אגוזים</td><td>6</td><td>2</td><td class="tag1">C1</td></tr>
+          <tr><td class="lbl">תירס</td><td>1</td><td>7</td><td class="tag2">C2</td></tr>
+          <tr><td class="lbl">אפונה</td><td>3</td><td>8</td><td class="tag2">C2</td></tr>
+          <tr><td class="lbl">עדשים</td><td>2</td><td>6</td><td class="tag2">C2</td></tr>
+        </table>
+        <p class="note" style="font-family:var(--mono); margin-top:8px;">
+          <span class="tag1">‏C1 = (4, 2)</span><br>
+          <span class="tag2">‏C2 = (2, 7)</span>
+        </p>
+      </div>
+    </div>
+
+    <h3>‏שלב 1 — ריבוע המרחק של כל מזון מהמרכז שלו</h3>
+    <table id="tableC"></table>
+    <div class="bar" style="margin-top:9px;">
+      <button class="ghost" id="btnHintC">‏הצג רמז לשתי השורות הראשונות</button>
+    </div>
+    <p class="msg" id="msgC"></p>
+
+    <div class="step locked" id="stepSumC">
+      <h3 style="margin-top:0;">‏שלב 2 — סכום לכל אשכול</h3>
+      <div class="sumrow">
+        <span class="tag1">‏סכום C1 =</span> <input class="cell" id="sum1C" inputmode="numeric" disabled><span class="tick" id="tsum1C">✓</span>
+        &nbsp;&nbsp;
+        <span class="tag2">‏סכום C2 =</span> <input class="cell" id="sum2C" inputmode="numeric" disabled><span class="tick" id="tsum2C">✓</span>
+        <button id="btnSumC" disabled>בדיקה</button>
+      </div>
+      <p class="msg" id="msgSumC"></p>
+    </div>
+
+    <div class="step locked" id="stepTotalC">
+      <h3 style="margin-top:0;">‏שלב 3 — ה-WCSS הכולל</h3>
+      <div class="sumrow">
+        <span>‏WCSS =</span> <input class="cell" id="totalC" inputmode="numeric" disabled><span class="tick" id="ttotalC">✓</span>
+        <button id="btnTotalC" disabled>בדיקה</button>
+      </div>
+      <p class="msg" id="msgTotalC"></p>
+    </div>
+
+    <div class="final" id="finalC"></div>
+  </div>
+
+  <!-- ===================== EXERCISE D ===================== -->
+  <div class="card">
+    <h2>‏תרגיל ד׳ — ממד אחד, שני מרכזים</h2>
+    <p class="note">‏כמו תרגיל ב׳, אבל הפעם הנתונים מחולקים לשני אשכולות, ולכל אחד מרכז משלו. חשבו את ה-WCSS הכולל בבת אחת.</p>
+
+    <div class="layout" style="margin-top:10px;">
+      <div>
+        <table>
+          <tr><th>מזון</th><th>קלוריות</th><th>אשכול</th></tr>
+          <tr><td class="lbl">חסה</td><td>3</td><td class="tag1">C1</td></tr>
+          <tr><td class="lbl">מלפפון</td><td>5</td><td class="tag1">C1</td></tr>
+          <tr><td class="lbl">גזר</td><td>10</td><td class="tag1">C1</td></tr>
+          <tr><td class="lbl">אורז</td><td>20</td><td class="tag2">C2</td></tr>
+          <tr><td class="lbl">פסטה</td><td>24</td><td class="tag2">C2</td></tr>
+        </table>
+        <p class="note" style="font-family:var(--mono); margin-top:8px;">
+          <span class="tag1">‏מרכז C1 = 6</span><br>
+          <span class="tag2">‏מרכז C2 = 22</span>
+        </p>
+      </div>
+      <svg id="lineD" width="340" height="110" viewBox="0 0 340 110"></svg>
+    </div>
+
+    <div class="sumrow">
+      <span>‏WCSS =</span> <input class="cell" id="twoC" inputmode="numeric"><span class="tick" id="tTwoC">✓</span>
+      <button id="btnTwoC">בדיקה</button>
+      <button class="ghost" id="btnTwoCHint">הצג רמז</button>
+    </div>
+    <p class="msg" id="msgTwoC"></p>
+    <p class="note" id="hintTwoC" style="display:none; font-style:italic;">
+      ‏כל מזון נמדד מול המרכז של <b>האשכול שלו בלבד</b>: שלושת הראשונים מול 6, ושני האחרונים מול 22. העלו כל הפרש בריבוע וחברו את חמש התוצאות יחד.
+    </p>
+    <div class="final" id="finalD"></div>
+  </div>
+
+  <div class="card">
+    <div class="bar" style="margin-top:0;">
+      <button id="btnCopy" disabled>‏העתק את העבודה שלי</button>
+      <button class="ghost" id="btnReset">התחל מחדש</button>
+      <span class="copymsg" id="copyMsg"></span>
+    </div>
+    <p class="note" style="margin-top:10px; margin-bottom:0;">
+      ‏סיימו את ארבעת התרגילים, לחצו ״העתק את העבודה שלי״, והדביקו במסמך Google Docs כדי להגיש ב-Google Classroom.
+    </p>
+  </div>
+</div>
+
+<script>
+/* ---------------- data ---------------- */
+const C1 = {cal:6, pro:3}, C2 = {cal:1, pro:6};
+const FOODS = [
+  {n:"טונה",    cal:6, pro:4, c:0},
+  {n:"לחם",     cal:5, pro:0, c:0},
+  {n:"גבינה",   cal:7, pro:5, c:0},
+  {n:"חסה",     cal:1, pro:3, c:1},
+  {n:"מלפפון",  cal:1, pro:7, c:1},
+  {n:"עגבנייה", cal:1, pro:8, c:1}
+];
+const CENT = [C1, C2];
+const sqd = f => (f.cal - CENT[f.c].cal)**2 + (f.pro - CENT[f.c].pro)**2;
+
+const ONED = [{n:"מלפפון",v:2},{n:"גזר",v:4},{n:"תפוח",v:9},{n:"בננה",v:13}];
+const ONED_MEAN = 7;
+const ONED_WCSS = ONED.reduce((s,o)=>s+(o.v-ONED_MEAN)**2, 0);
+
+const SUM1 = FOODS.filter(f=>f.c===0).reduce((s,f)=>s+sqd(f),0);
+const SUM2 = FOODS.filter(f=>f.c===1).reduce((s,f)=>s+sqd(f),0);
+const TOTAL = SUM1 + SUM2;
+
+const doneA = FOODS.map(()=>false);
+let sumsDone = false, totalDone = false, oneDDone = false;
+
+const PRAISE = ["‏✓ יפה, זה נכון!", "‏✓ מצוין!", "‏✓ כל הכבוד!", "‏✓ בדיוק!", "‏✓ נכון מאוד!"];
+const praise = () => PRAISE[Math.floor(Math.random()*PRAISE.length)];
+function say(id, text, good){
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = "msg" + (good ? " good" : "");
+}
+const num = v => Number(String(v).trim().replace(",", "."));
+
+/* ---------------- plot ---------------- */
+function drawPlot(){
+  const X = v => 36 + 25*v, Y = v => 244 - 25*v;
+  let s = "";
+  for(let i=0;i<=9;i++){
+    s += `<line x1="${X(i)}" y1="${Y(0)}" x2="${X(i)}" y2="${Y(9)}" stroke="#E9EDE5"/>`;
+    s += `<line x1="${X(0)}" y1="${Y(i)}" x2="${X(9)}" y2="${Y(i)}" stroke="#E9EDE5"/>`;
+    s += `<text x="${X(i)}" y="260" font-size="9" fill="#5B6B65" text-anchor="middle" font-family="ui-monospace,monospace">${i}</text>`;
+    s += `<text x="30" y="${Y(i)+3}" font-size="9" fill="#5B6B65" text-anchor="end" font-family="ui-monospace,monospace">${i}</text>`;
+  }
+  s += `<line x1="${X(0)}" y1="${Y(0)}" x2="${X(9)}" y2="${Y(0)}" stroke="#5B6B65" stroke-width="1.3"/>`;
+  s += `<line x1="${X(0)}" y1="${Y(0)}" x2="${X(0)}" y2="${Y(9)}" stroke="#5B6B65" stroke-width="1.3"/>`;
+  s += `<text x="${X(4.5)}" y="274" font-size="9.5" fill="#1E2A26" text-anchor="middle">קלוריות</text>`;
+  s += `<text x="12" y="${Y(4.5)}" font-size="9.5" fill="#1E2A26" text-anchor="middle" transform="rotate(-90 12 ${Y(4.5)})">חלבון</text>`;
+  // dashed line from each food to its centroid — that is the distance being squared
+  FOODS.forEach(f=>{
+    const c = CENT[f.c], col = f.c===0 ? "#DC2626" : "#2563EB";
+    s += `<line x1="${X(f.cal)}" y1="${Y(f.pro)}" x2="${X(c.cal)}" y2="${Y(c.pro)}" stroke="${col}" stroke-width="1" stroke-dasharray="3 3" opacity=".55"/>`;
+  });
+  FOODS.forEach(f=>{
+    const col = f.c===0 ? "#DC2626" : "#2563EB";
+    s += `<circle cx="${X(f.cal)}" cy="${Y(f.pro)}" r="4.5" fill="${col}"/>`;
+    s += `<text x="${X(f.cal)+7}" y="${Y(f.pro)-4}" font-size="10" font-weight="700">${f.n}</text>`;
+  });
+  CENT.forEach((c,ci)=>{
+    const col = ci===0 ? "#DC2626" : "#2563EB";
+    s += `<rect x="${X(c.cal)-5.5}" y="${Y(c.pro)-5.5}" width="11" height="11" fill="none" stroke="${col}" stroke-width="2.2" transform="rotate(45 ${X(c.cal)} ${Y(c.pro)})"/>`;
+    s += `<text x="${X(c.cal)-14}" y="${Y(c.pro)-8}" font-size="10" fill="${col}" font-weight="700" font-family="ui-monospace,monospace">C${ci+1}</text>`;
+  });
+  document.getElementById("plotA").innerHTML = s;
+}
+
+/* ---------------- step 1 table ---------------- */
+function buildTableA(){
+  let h = `<tr><th>מזון</th><th>האשכול שלו</th><th>החישוב</th><th>ריבוע המרחק</th></tr>`;
+  FOODS.forEach((f,i)=>{
+    const c = CENT[f.c];
+    h += `<tr>
+      <td class="lbl">${f.n} <small>(${f.cal},${f.pro})</small></td>
+      <td class="${f.c===0?'tag1':'tag2'}">C${f.c+1} <small>(${c.cal},${c.pro})</small></td>
+      <td class="calc" dir="ltr">(${f.cal} − ${c.cal})² + (${f.pro} − ${c.pro})²</td>
+      <td class="cellwrap"><input class="cell" id="a_${i}" inputmode="numeric" autocomplete="off"><span class="tick" id="ta_${i}">✓</span></td>
+    </tr>`;
+  });
+  document.getElementById("tableA").innerHTML = h;
+  FOODS.forEach((f,i)=>{
+    const el = document.getElementById(`a_${i}`);
+    el.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); checkA(i); }});
+    el.addEventListener("blur", ()=>{ if(el.value.trim()) checkA(i); });
+  });
+}
+
+function checkA(i){
+  if(doneA[i]) return;
+  const el = document.getElementById(`a_${i}`);
+  const raw = el.value.trim();
+  if(!raw) return;
+  const v = num(raw);
+  if(!isFinite(v)){ say("msgA","‏כתבו מספר."); return; }
+  if(v === sqd(FOODS[i])){
+    el.classList.add("done"); el.readOnly = true;
+    document.getElementById(`ta_${i}`).classList.add("on");
+    doneA[i] = true;
+    say("msgA", praise(), true);
+    if(doneA.every(Boolean)) unlockSums();
+  } else {
+    say("msgA", "‏עוד לא — חסרו את ערכי המרכז, העלו כל הפרש בריבוע, וחברו.");
+  }
+}
+
+function unlockSums(){
+  document.getElementById("stepSum").classList.remove("locked");
+  ["sum1","sum2"].forEach(id=>document.getElementById(id).disabled=false);
+  document.getElementById("btnSum").disabled = false;
+  document.getElementById("sum1").focus();
+}
+
+document.getElementById("btnSum").addEventListener("click", ()=>{
+  if(sumsDone) return;
+  const a = num(document.getElementById("sum1").value);
+  const b = num(document.getElementById("sum2").value);
+  if(!isFinite(a) || !isFinite(b)){ say("msgSum","‏מלאו את שני הסכומים."); return; }
+  if(a === SUM1 && b === SUM2){
+    ["sum1","sum2"].forEach(id=>{ const e=document.getElementById(id); e.classList.add("done"); e.disabled=true; });
+    ["tsum1","tsum2"].forEach(id=>document.getElementById(id).classList.add("on"));
+    document.getElementById("btnSum").disabled = true;
+    sumsDone = true;
+    say("msgSum", praise(), true);
+    document.getElementById("stepTotal").classList.remove("locked");
+    document.getElementById("total").disabled = false;
+    document.getElementById("btnTotal").disabled = false;
+    document.getElementById("total").focus();
+  } else {
+    const which = (a !== SUM1 && b !== SUM2) ? "שני הסכומים" : (a !== SUM1 ? "הסכום של C1" : "הסכום של C2");
+    say("msgSum", `‏עוד לא — בדקו שוב את ${which}. חברו את שלוש השורות של אותו אשכול.`);
+  }
+});
+
+document.getElementById("btnTotal").addEventListener("click", ()=>{
+  if(totalDone) return;
+  const v = num(document.getElementById("total").value);
+  if(!isFinite(v)){ say("msgTotal","‏כתבו מספר."); return; }
+  if(v === TOTAL){
+    const e = document.getElementById("total"); e.classList.add("done"); e.disabled = true;
+    document.getElementById("ttotal").classList.add("on");
+    document.getElementById("btnTotal").disabled = true;
+    totalDone = true;
+    say("msgTotal", praise(), true);
+    const f = document.getElementById("finalA");
+    f.className = "final on";
+    f.innerHTML = `‏ה-WCSS של החלוקה הזו הוא <b>${TOTAL}</b>.<br>` +
+      `<span class="note">‏אשכול <span class="tag1">C1</span> תרם ${SUM1}, ואשכול <span class="tag2">C2</span> תרם ${SUM2}. ` +
+      `האשכול עם התרומה הגדולה יותר הוא זה שנקודותיו מפוזרות יותר סביב המרכז.</span>`;
+    refreshCopy();
+  } else {
+    say("msgTotal", "‏עוד לא — ה-WCSS הכולל הוא פשוט סכום שני הסכומים מהשלב הקודם.");
+  }
+});
+
+/* ---------------- exercise B ---------------- */
+document.getElementById("btnOneD").addEventListener("click", ()=>{
+  if(oneDDone) return;
+  const v = num(document.getElementById("oneD").value);
+  if(!isFinite(v)){ say("msgOneD","‏כתבו מספר."); return; }
+  if(v === ONED_WCSS){
+    const e = document.getElementById("oneD"); e.classList.add("done"); e.readOnly = true;
+    document.getElementById("tOneD").classList.add("on");
+    document.getElementById("btnOneD").disabled = true;
+    oneDDone = true;
+    say("msgOneD", praise(), true);
+    const terms = ONED.map(o=>`(${o.v}−${ONED_MEAN})² = ${(o.v-ONED_MEAN)**2}`).join(" ,  ");
+    const f = document.getElementById("finalB");
+    f.className = "final on";
+    f.innerHTML = `‏ה-WCSS הוא <b>${ONED_WCSS}</b>.<br>` +
+      `<span class="note" dir="ltr" style="display:inline-block; font-family:var(--mono)">${terms}</span><br>` +
+      `<span class="note">‏בממד אחד הנוסחה זהה — פשוט אין רכיב שני לחבר.</span>`;
+    refreshCopy();
+  } else {
+    say("msgOneD", "‏עוד לא — חסרו 7 מכל ערך, העלו בריבוע, וחברו את ארבע התוצאות.");
+  }
+});
+document.getElementById("btnOneDHint").addEventListener("click", ()=>{
+  const h = document.getElementById("hintOneD");
+  const shown = h.style.display !== "none";
+  h.style.display = shown ? "none" : "block";
+  document.getElementById("btnOneDHint").textContent = shown ? "הצג רמז" : "הסתר רמז";
+});
+
+
+/* ================= exercise C — same shape as A, hints hidden ================= */
+const CC = [{cal:4, pro:2}, {cal:2, pro:7}];
+const FOODS_C = [
+  {n:"ביצה",   cal:2, pro:1, c:0},
+  {n:"טופו",   cal:4, pro:3, c:0},
+  {n:"אגוזים", cal:6, pro:2, c:0},
+  {n:"תירס",   cal:1, pro:7, c:1},
+  {n:"אפונה",  cal:3, pro:8, c:1},
+  {n:"עדשים",  cal:2, pro:6, c:1}
+];
+const sqdC = f => (f.cal - CC[f.c].cal)**2 + (f.pro - CC[f.c].pro)**2;
+const SUM1C = FOODS_C.filter(f=>f.c===0).reduce((s,f)=>s+sqdC(f),0);
+const SUM2C = FOODS_C.filter(f=>f.c===1).reduce((s,f)=>s+sqdC(f),0);
+const TOTALC = SUM1C + SUM2C;
+const HINT_ROWS = 2;              // only the first two rows may be revealed
+const doneC = FOODS_C.map(()=>false);
+let sumsDoneC = false, totalDoneC = false, hintShownC = false;
+
+function drawPlotC(){
+  const X = v => 36 + 25*v, Y = v => 244 - 25*v;
+  let s = "";
+  for(let i=0;i<=9;i++){
+    s += `<line x1="${X(i)}" y1="${Y(0)}" x2="${X(i)}" y2="${Y(9)}" stroke="#E9EDE5"/>`;
+    s += `<line x1="${X(0)}" y1="${Y(i)}" x2="${X(9)}" y2="${Y(i)}" stroke="#E9EDE5"/>`;
+    s += `<text x="${X(i)}" y="260" font-size="9" fill="#5B6B65" text-anchor="middle" font-family="ui-monospace,monospace">${i}</text>`;
+    s += `<text x="30" y="${Y(i)+3}" font-size="9" fill="#5B6B65" text-anchor="end" font-family="ui-monospace,monospace">${i}</text>`;
+  }
+  s += `<line x1="${X(0)}" y1="${Y(0)}" x2="${X(9)}" y2="${Y(0)}" stroke="#5B6B65" stroke-width="1.3"/>`;
+  s += `<line x1="${X(0)}" y1="${Y(0)}" x2="${X(0)}" y2="${Y(9)}" stroke="#5B6B65" stroke-width="1.3"/>`;
+  s += `<text x="${X(4.5)}" y="274" font-size="9.5" fill="#1E2A26" text-anchor="middle">קלוריות</text>`;
+  s += `<text x="12" y="${Y(4.5)}" font-size="9.5" fill="#1E2A26" text-anchor="middle" transform="rotate(-90 12 ${Y(4.5)})">חלבון</text>`;
+  FOODS_C.forEach(f=>{
+    const c = CC[f.c], col = f.c===0 ? "#DC2626" : "#2563EB";
+    s += `<line x1="${X(f.cal)}" y1="${Y(f.pro)}" x2="${X(c.cal)}" y2="${Y(c.pro)}" stroke="${col}" stroke-width="1" stroke-dasharray="3 3" opacity=".55"/>`;
+  });
+  FOODS_C.forEach(f=>{
+    const col = f.c===0 ? "#DC2626" : "#2563EB";
+    s += `<circle cx="${X(f.cal)}" cy="${Y(f.pro)}" r="4.5" fill="${col}"/>`;
+    s += `<text x="${X(f.cal)+7}" y="${Y(f.pro)-4}" font-size="10" font-weight="700">${f.n}</text>`;
+  });
+  CC.forEach((c,ci)=>{
+    const col = ci===0 ? "#DC2626" : "#2563EB";
+    s += `<rect x="${X(c.cal)-5.5}" y="${Y(c.pro)-5.5}" width="11" height="11" fill="none" stroke="${col}" stroke-width="2.2" transform="rotate(45 ${X(c.cal)} ${Y(c.pro)})"/>`;
+    s += `<text x="${X(c.cal)-14}" y="${Y(c.pro)-8}" font-size="10" fill="${col}" font-weight="700" font-family="ui-monospace,monospace">C${ci+1}</text>`;
+  });
+  document.getElementById("plotC").innerHTML = s;
+}
+
+function buildTableC(){
+  let h = `<tr><th>מזון</th><th>האשכול שלו</th><th>החישוב</th><th>ריבוע המרחק</th></tr>`;
+  FOODS_C.forEach((f,i)=>{
+    const c = CC[f.c];
+    h += `<tr>
+      <td class="lbl">${f.n} <small>(${f.cal},${f.pro})</small></td>
+      <td class="${f.c===0?'tag1':'tag2'}">C${f.c+1} <small>(${c.cal},${c.pro})</small></td>
+      <td class="calc" id="calcC_${i}" dir="ltr">—</td>
+      <td class="cellwrap"><input class="cell" id="c_${i}" inputmode="numeric" autocomplete="off"><span class="tick" id="tc_${i}">✓</span></td>
+    </tr>`;
+  });
+  document.getElementById("tableC").innerHTML = h;
+  FOODS_C.forEach((f,i)=>{
+    const el = document.getElementById(`c_${i}`);
+    el.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); checkC(i); }});
+    el.addEventListener("blur", ()=>{ if(el.value.trim()) checkC(i); });
+  });
+}
+
+document.getElementById("btnHintC").addEventListener("click", ()=>{
+  if(hintShownC) return;
+  for(let i=0;i<HINT_ROWS;i++){
+    const f = FOODS_C[i], c = CC[f.c];
+    document.getElementById(`calcC_${i}`).textContent =
+      `(${f.cal} − ${c.cal})² + (${f.pro} − ${c.pro})²`;
+  }
+  hintShownC = true;
+  const b = document.getElementById("btnHintC");
+  b.disabled = true;
+  b.textContent = `‏הרמז מוצג לשתי השורות הראשונות בלבד`;
+  say("msgC", "‏שתי השורות הראשונות נחשפו. את השאר נסו לבד — אותה שיטה בדיוק.");
+});
+
+function checkC(i){
+  if(doneC[i]) return;
+  const el = document.getElementById(`c_${i}`);
+  const raw = el.value.trim();
+  if(!raw) return;
+  const v = num(raw);
+  if(!isFinite(v)){ say("msgC","‏כתבו מספר."); return; }
+  if(v === sqdC(FOODS_C[i])){
+    el.classList.add("done"); el.readOnly = true;
+    document.getElementById(`tc_${i}`).classList.add("on");
+    doneC[i] = true;
+    say("msgC", praise(), true);
+    if(doneC.every(Boolean)){
+      document.getElementById("stepSumC").classList.remove("locked");
+      ["sum1C","sum2C"].forEach(id=>document.getElementById(id).disabled=false);
+      document.getElementById("btnSumC").disabled = false;
+      document.getElementById("sum1C").focus();
+    }
+  } else {
+    say("msgC", "‏עוד לא — חסרו את ערכי המרכז, העלו כל הפרש בריבוע, וחברו.");
+  }
+}
+
+document.getElementById("btnSumC").addEventListener("click", ()=>{
+  if(sumsDoneC) return;
+  const a = num(document.getElementById("sum1C").value);
+  const b = num(document.getElementById("sum2C").value);
+  if(!isFinite(a) || !isFinite(b)){ say("msgSumC","‏מלאו את שני הסכומים."); return; }
+  if(a === SUM1C && b === SUM2C){
+    ["sum1C","sum2C"].forEach(id=>{ const e=document.getElementById(id); e.classList.add("done"); e.disabled=true; });
+    ["tsum1C","tsum2C"].forEach(id=>document.getElementById(id).classList.add("on"));
+    document.getElementById("btnSumC").disabled = true;
+    sumsDoneC = true;
+    say("msgSumC", praise(), true);
+    document.getElementById("stepTotalC").classList.remove("locked");
+    document.getElementById("totalC").disabled = false;
+    document.getElementById("btnTotalC").disabled = false;
+    document.getElementById("totalC").focus();
+  } else {
+    const which = (a !== SUM1C && b !== SUM2C) ? "שני הסכומים" : (a !== SUM1C ? "הסכום של C1" : "הסכום של C2");
+    say("msgSumC", `‏עוד לא — בדקו שוב את ${which}. חברו את שלוש השורות של אותו אשכול.`);
+  }
+});
+
+document.getElementById("btnTotalC").addEventListener("click", ()=>{
+  if(totalDoneC) return;
+  const v = num(document.getElementById("totalC").value);
+  if(!isFinite(v)){ say("msgTotalC","‏כתבו מספר."); return; }
+  if(v === TOTALC){
+    const e = document.getElementById("totalC"); e.classList.add("done"); e.disabled = true;
+    document.getElementById("ttotalC").classList.add("on");
+    document.getElementById("btnTotalC").disabled = true;
+    totalDoneC = true;
+    say("msgTotalC", praise(), true);
+    const f = document.getElementById("finalC");
+    f.className = "final on";
+    f.innerHTML = `‏ה-WCSS של החלוקה הזו הוא <b>${TOTALC}</b>.<br>` +
+      `<span class="note">‏אשכול <span class="tag1">C1</span> תרם ${SUM1C}, ואשכול <span class="tag2">C2</span> תרם ${SUM2C}. ` +
+      `כאן דווקא C2 הדוק יותר — נקודותיו צמודות מאוד למרכז.</span>`;
+    refreshCopy();
+  } else {
+    say("msgTotalC", "‏עוד לא — ה-WCSS הכולל הוא סכום שני הסכומים מהשלב הקודם.");
+  }
+});
+
+/* ================= exercise D — one dimension, two centroids ================= */
+const TWOD = [
+  {n:"חסה",    v:3,  c:0},
+  {n:"מלפפון", v:5,  c:0},
+  {n:"גזר",    v:10, c:0},
+  {n:"אורז",   v:20, c:1},
+  {n:"פסטה",   v:24, c:1}
+];
+const TWOD_MEANS = [6, 22];
+const TWOD_WCSS = TWOD.reduce((s,o)=> s + (o.v - TWOD_MEANS[o.c])**2, 0);
+let twoCDone = false;
+
+function drawLineD(){
+  const W=340, H=110, PAD=28;
+  const vmax = 28;
+  const X = v => PAD + (v/vmax)*(W-PAD*2);
+  const base = 66;
+  let s = `<line x1="${X(0)}" y1="${base}" x2="${X(vmax)}" y2="${base}" stroke="#5B6B65" stroke-width="1.2"/>`;
+  for(let v=0; v<=vmax; v+=4){
+    s += `<line x1="${X(v)}" y1="${base}" x2="${X(v)}" y2="${base+4}" stroke="#5B6B65"/>`;
+    s += `<text x="${X(v)}" y="${base+16}" font-size="8.5" fill="#5B6B65" text-anchor="middle" font-family="ui-monospace,monospace">${v}</text>`;
+  }
+  TWOD.forEach(o=>{
+    const col = o.c===0 ? "#DC2626" : "#2563EB";
+    s += `<line x1="${X(o.v)}" y1="${base}" x2="${X(TWOD_MEANS[o.c])}" y2="${base}" stroke="${col}" stroke-width="2.5" opacity=".28"/>`;
+    s += `<circle cx="${X(o.v)}" cy="${base}" r="4.5" fill="${col}"/>`;
+    s += `<text x="${X(o.v)}" y="${base-10}" font-size="9" fill="#1E2A26" text-anchor="middle">${o.n}</text>`;
+  });
+  TWOD_MEANS.forEach((m,ci)=>{
+    const col = ci===0 ? "#DC2626" : "#2563EB";
+    s += `<rect x="${X(m)-5}" y="${base-5}" width="10" height="10" fill="none" stroke="${col}" stroke-width="2.2" transform="rotate(45 ${X(m)} ${base})"/>`;
+    s += `<text x="${X(m)}" y="${base+30}" font-size="9" fill="${col}" font-weight="700" text-anchor="middle" font-family="ui-monospace,monospace">C${ci+1}=${m}</text>`;
+  });
+  s += `<text x="${W/2}" y="14" font-size="9.5" fill="#5B6B65" text-anchor="middle">קלוריות — ציר אחד בלבד</text>`;
+  document.getElementById("lineD").innerHTML = s;
+}
+
+document.getElementById("btnTwoC").addEventListener("click", ()=>{
+  if(twoCDone) return;
+  const v = num(document.getElementById("twoC").value);
+  if(!isFinite(v)){ say("msgTwoC","‏כתבו מספר."); return; }
+  if(v === TWOD_WCSS){
+    const e = document.getElementById("twoC"); e.classList.add("done"); e.readOnly = true;
+    document.getElementById("tTwoC").classList.add("on");
+    document.getElementById("btnTwoC").disabled = true;
+    twoCDone = true;
+    say("msgTwoC", praise(), true);
+    const s1 = TWOD.filter(o=>o.c===0).reduce((s,o)=>s+(o.v-TWOD_MEANS[0])**2,0);
+    const s2 = TWOD.filter(o=>o.c===1).reduce((s,o)=>s+(o.v-TWOD_MEANS[1])**2,0);
+    const terms = ci => TWOD.filter(o=>o.c===ci)
+      .map(o=>`(${o.v}−${TWOD_MEANS[ci]})²=${(o.v-TWOD_MEANS[ci])**2}`).join("  ,  ");
+    const f = document.getElementById("finalD");
+    f.className = "final on";
+    f.innerHTML = `‏ה-WCSS הכולל הוא <b>${TWOD_WCSS}</b>.<br>` +
+      `<span class="note"><span class="tag1">‏C1:</span> <span dir="ltr" style="font-family:var(--mono)">${terms(0)}</span> &nbsp;=&nbsp; ${s1}<br>` +
+      `<span class="tag2">‏C2:</span> <span dir="ltr" style="font-family:var(--mono)">${terms(1)}</span> &nbsp;=&nbsp; ${s2}<br>` +
+      `‏כל מזון נמדד מול המרכז של האשכול שלו בלבד, ובסוף מחברים את שני האשכולות.</span>`;
+    refreshCopy();
+  } else {
+    say("msgTwoC", "‏עוד לא — ודאו שכל מזון נמדד מול המרכז של האשכול שלו, ולא מול מרכז אחד משותף.");
+  }
+});
+document.getElementById("btnTwoCHint").addEventListener("click", ()=>{
+  const h = document.getElementById("hintTwoC");
+  const shown = h.style.display !== "none";
+  h.style.display = shown ? "none" : "block";
+  document.getElementById("btnTwoCHint").textContent = shown ? "הצג רמז" : "הסתר רמז";
+});
+
+/* ---------------- copy ---------------- */
+function refreshCopy(){
+  document.getElementById("btnCopy").disabled =
+    !(totalDone && oneDDone && totalDoneC && twoCDone);
+}
+
+function buildReport(){
+  const RLM = "‏";
+  const date = new Date().toLocaleDateString("he-IL");
+  const out = [];
+  const L = t => String(t).split("\n").forEach(l => out.push(l ? RLM + l : ""));
+
+  L("‏תרגול WCSS — העבודה שלי");
+  out.push("");
+  L(`תאריך: ${date}`);
+  out.push("");
+  L("תרגיל א׳ — שני ממדים");
+  L(`  מרכזים: C1 = (${C1.cal}, ${C1.pro})   C2 = (${C2.cal}, ${C2.pro})`);
+  FOODS.forEach(f=>{
+    const c = CENT[f.c];
+    L(`  ${f.n} (${f.cal},${f.pro}) באשכול C${f.c+1}: (${f.cal}−${c.cal})² + (${f.pro}−${c.pro})² = ${sqd(f)}`);
+  });
+  L(`  סכום C1 = ${SUM1}`);
+  L(`  סכום C2 = ${SUM2}`);
+  L(`  WCSS = ${TOTAL}`);
+  out.push("");
+  L("תרגיל ב׳ — ממד אחד");
+  L(`  הערכים: ${ONED.map(o=>o.v).join(", ")}   מרכז = ${ONED_MEAN}`);
+  L(`  ${ONED.map(o=>`(${o.v}−${ONED_MEAN})²=${(o.v-ONED_MEAN)**2}`).join("  ,  ")}`);
+  L(`  WCSS = ${ONED_WCSS}`);
+  out.push("");
+  L("תרגיל ג׳ — שני ממדים, בלי רמזים");
+  L(`  מרכזים: C1 = (${CC[0].cal}, ${CC[0].pro})   C2 = (${CC[1].cal}, ${CC[1].pro})`);
+  FOODS_C.forEach(f=>{
+    const c = CC[f.c];
+    L(`  ${f.n} (${f.cal},${f.pro}) באשכול C${f.c+1}: (${f.cal}\u2212${c.cal})\u00B2 + (${f.pro}\u2212${c.pro})\u00B2 = ${sqdC(f)}`);
+  });
+  L(`  סכום C1 = ${SUM1C}`);
+  L(`  סכום C2 = ${SUM2C}`);
+  L(`  WCSS = ${TOTALC}`);
+  out.push("");
+  L("תרגיל ד׳ — ממד אחד, שני מרכזים");
+  L(`  מרכז C1 = ${TWOD_MEANS[0]}   מרכז C2 = ${TWOD_MEANS[1]}`);
+  TWOD.forEach(o=>{
+    L(`  ${o.n} = ${o.v} באשכול C${o.c+1}: (${o.v}\u2212${TWOD_MEANS[o.c]})\u00B2 = ${(o.v-TWOD_MEANS[o.c])**2}`);
+  });
+  L(`  WCSS = ${TWOD_WCSS}`);
+  out.push("");
+  L("‏ככל שה-WCSS קטן יותר, הנקודות צמודות יותר למרכזי האשכולות שלהן.");
+  return out.join("\r\n");
+}
+
+document.getElementById("btnCopy").addEventListener("click", async ()=>{
+  const text = buildReport();
+  const el = document.getElementById("copyMsg");
+  const ok = t => { el.textContent = t; el.style.color = "var(--ok)";
+                    setTimeout(()=>{ if(el.textContent===t) el.textContent=""; }, 5000); };
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text); ok("‏✓ הועתק! הדביקו במסמך."); return;
+    }
+    throw new Error("no clipboard api");
+  }catch(e){
+    /* file:// pages block the async clipboard API */
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position="fixed"; ta.style.top="-1000px";
+    document.body.appendChild(ta); ta.select();
+    let done=false;
+    try{ done = document.execCommand("copy"); }catch(_){ done=false; }
+    document.body.removeChild(ta);
+    done ? ok("‏✓ הועתק! הדביקו במסמך.")
+         : (el.textContent="‏ההעתקה נכשלה — סמנו והעתיקו ידנית.", el.style.color="var(--soft)");
+  }
+});
+
+document.getElementById("btnReset").addEventListener("click", ()=>{ location.reload(); });
+
+/* ---------------- init ---------------- */
+drawPlot();
+buildTableA();
+drawPlotC();
+buildTableC();
+drawLineD();
+refreshCopy();
+</script>
+</body>
+</html>
