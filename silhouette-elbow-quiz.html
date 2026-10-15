@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>בדיקה עצמית</title>
+<style>
+  :root{
+    --bg:#F4F5F1; --card:#FFFFFF; --ink:#1E2A26; --ink-soft:#5B6B65;
+    --accent:#1E3A5F; --accent-hover:#16304D; --line:#DDE1DA;
+    --quiet:#9BA39D;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --sans: -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:18px 18px 50px; background:var(--bg); color:var(--ink);
+       font-family:var(--sans); line-height:1.55;}
+  .wrap{max-width:760px; margin:0 auto;}
+  .topbar{display:flex; justify-content:space-between; align-items:flex-start; gap:14px;}
+  h1{font-family:var(--serif); font-size:22px; font-weight:700; margin:0 0 3px;}
+  .subtitle{color:var(--ink-soft); margin:0 0 14px; font-size:13.5px;}
+  #langBtn{background:#fff; color:var(--accent); border:1.5px solid var(--accent);
+           border-radius:7px; padding:7px 13px; font-size:13px; font-weight:600;
+           cursor:pointer; white-space:nowrap;}
+  #langBtn:hover{background:#EEF2F6;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:10px;
+        padding:16px 18px; margin-bottom:12px;}
+  label.field{display:block; font-size:12px; font-weight:600; color:var(--ink-soft);
+              margin-bottom:6px; text-transform:uppercase; letter-spacing:.03em;}
+  select, input[type="text"], textarea{
+    width:100%; font-family:var(--sans); font-size:15px; padding:10px 12px;
+    border:1.5px solid var(--line); border-radius:8px; background:#fff; color:var(--ink);
+  }
+  textarea{min-height:90px; resize:vertical; line-height:1.5;}
+  select:focus, input[type="text"]:focus, textarea:focus{outline:none; border-color:var(--accent);}
+  .qtext{font-size:16px; margin:0 0 10px; white-space:pre-wrap;}
+  .qcode{
+    direction:ltr; text-align:left; font-family:var(--mono); font-size:12.5px;
+    background:#F8F9F6; border:1px solid var(--line); border-radius:7px;
+    padding:10px 12px; margin:0 0 10px; overflow-x:auto; white-space:pre;
+  }
+  .qmeta{font-size:12.5px; color:var(--ink-soft); margin:0 0 12px;}
+  .row{display:flex; gap:8px; align-items:stretch; margin-top:10px; flex-wrap:wrap;}
+  .row .grow{flex:1; min-width:180px;}
+  button.primary{font-family:var(--sans); font-size:14px; font-weight:600;
+    background:var(--accent); color:#fff; border:none; border-radius:8px;
+    padding:10px 18px; cursor:pointer; white-space:nowrap;}
+  button.primary:hover{background:var(--accent-hover);}
+  button.ghost{font-family:var(--sans); font-size:13.5px; font-weight:600;
+    background:#fff; color:var(--accent); border:1.5px solid var(--accent);
+    border-radius:8px; padding:9px 14px; cursor:pointer; white-space:nowrap;}
+  button.ghost:hover{background:#EEF2F6;}
+  button.ghost:disabled{color:#A8B0A8; border-color:var(--line); cursor:not-allowed; background:#fff;}
+  .nav{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:12px;}
+
+  /* Feedback is deliberately faint: a quiet note, never a verdict.
+     No coloured panels, no big marks — a wrong answer is fine. */
+  .verdict{margin-top:10px; font-size:12.5px; color:var(--quiet);
+           display:none; line-height:1.5;}
+  .verdict.show{display:block;}
+  .verdict .mark{font-weight:500;}
+  .verdict .note{display:block; margin-top:2px;}
+
+  .choices{display:flex; flex-direction:column; gap:8px; margin-top:4px;}
+  .choice{display:flex; align-items:flex-start; gap:10px; padding:10px 12px;
+          border:1.5px solid var(--line); border-radius:8px; cursor:pointer;
+          font-size:15px; line-height:1.45; background:#fff; transition:border-color .12s ease;}
+  .choice:hover{border-color:var(--accent);}
+  .choice input{margin:3px 0 0; flex:none; cursor:pointer;}
+  .choice.picked{border-color:var(--accent); background:#F7F9FB;}
+  .hintbox{margin-top:10px; font-size:13.5px; color:var(--ink-soft); font-style:italic; display:none;}
+  .hintbox.show{display:block;}
+  .progress{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;}
+  .pchip{min-width:28px; height:28px; padding:0 6px; border-radius:6px;
+         border:1.5px solid var(--line); background:#fff; font-size:12.5px;
+         font-family:var(--mono); display:flex; align-items:center;
+         justify-content:center; color:var(--quiet); cursor:pointer;}
+  .pchip:hover{border-color:var(--accent);}
+  /* Answered vs not — nothing about right or wrong. */
+  .pchip.filled{background:#EFF1EC; color:var(--ink);}
+  .pchip.current{border-color:var(--accent); border-width:2px; color:var(--accent); font-weight:700;}
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .copymsg{font-size:13px; font-family:var(--mono);}
+  .docwrap{margin-top:6px;}
+  .docbar{display:flex; align-items:center; gap:10px; margin-bottom:8px;}
+  .docstatus{font-size:12.5px; color:var(--ink-soft); white-space:nowrap;}
+  .docprog{flex:1; height:6px; background:#E8EBE5; border-radius:99px; overflow:hidden;}
+  .docprog-fill{height:100%; width:0%; background:var(--accent); border-radius:99px;
+                transition:width .45s cubic-bezier(.4,0,.2,1);}
+  .docpage{background:#fff; border:1px solid var(--line); border-radius:8px;
+           padding:18px 20px; max-height:300px; overflow-y:auto;
+           box-shadow:inset 0 1px 3px rgba(30,42,38,.04);}
+  .docpage .doc-h1{font-family:var(--serif); font-size:16px; font-weight:700; margin:0 0 8px;}
+  .docpage .doc-meta{font-size:12.5px; color:var(--ink-soft); margin:0 0 4px;}
+  .docpage .doc-rule{border:none; border-top:1px solid var(--line); margin:12px 0;}
+  .docpage .doc-empty{font-size:13px; color:var(--quiet); font-style:italic; margin:6px 0;}
+  .doc-block{animation:docIn .45s cubic-bezier(.2,.8,.2,1); margin-bottom:4px;}
+  @keyframes docIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+  .doc-block .dq{font-size:13.5px; font-weight:600; margin:0 0 4px;}
+  .doc-block .dcode{direction:ltr; text-align:left; font-family:var(--mono);
+                    font-size:11.5px; background:#F8F9F6; border:1px solid var(--line);
+                    border-radius:5px; padding:6px 8px; margin:4px 0; overflow-x:auto; white-space:pre;}
+  .doc-block .da{font-size:13.5px; margin:2px 0 0;}
+  .doc-block .da b{font-weight:600;}
+.qsvg{
+  direction:ltr; margin:12px 0 4px; padding:10px 8px 4px;
+  background:#FCFDFB; border:1px solid #E3E7DF; border-radius:10px;
+}
+.qsvg svg{ display:block; }
+.qsvg .cap{
+  direction:rtl; text-align:center; font-size:12px; color:#5B6B65;
+  margin:2px 0 6px; font-weight:600;
+}
+</style>
+</head>
+<body dir="rtl">
+<div class="wrap">
+  <div class="topbar">
+    <div>
+      <h1 id="t_title"></h1>
+      <p class="subtitle" id="t_subtitle"></p>
+    </div>
+    <button id="langBtn">English</button>
+  </div>
+
+  <div class="card">
+    <label class="field" id="t_pickLabel">שאלה</label>
+    <select id="qSelect"></select>
+    <div class="progress" id="progress"></div>
+  </div>
+
+  <div class="card">
+    <p class="qtext" id="qText"></p>
+    <div class="qsvg" id="qSvg" style="display:none;"></div>
+    <pre class="qcode" id="qCode" style="display:none;"></pre>
+    <p class="qmeta" id="qMeta"></p>
+
+    <div class="row" id="inputRow">
+      <input type="text" class="grow" id="answerInput" autocomplete="off" spellcheck="false">
+      <button class="primary" id="btnCheck">בדיקה</button>
+    </div>
+    <textarea id="answerArea" style="display:none;" spellcheck="false"></textarea>
+    <div class="choices" id="choiceBox" style="display:none;"></div>
+    <div class="row" id="choiceRow" style="display:none;">
+      <button class="primary" id="btnCheckChoice">בדיקה</button>
+    </div>
+
+    <div class="row">
+      <button class="ghost" id="btnHint">הצג רמז</button>
+      <button class="ghost" id="btnClear">ניקוי</button>
+    </div>
+
+    <div class="hintbox" id="hintBox"></div>
+    <div class="verdict" id="verdict"></div>
+
+    <div class="nav">
+      <button class="ghost" id="btnPrev">→ הקודם</button>
+      <button class="ghost" id="btnNext">הבא ←</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label class="field" id="t_submitLabel">סיום והגשה</label>
+    <div class="docwrap">
+      <div class="docbar">
+        <span id="docStatus" class="docstatus"></span>
+        <div class="docprog"><div class="docprog-fill" id="docProgFill"></div></div>
+      </div>
+      <div class="docpage" id="docPreview"></div>
+    </div>
+    <div class="toolbar" style="margin-top:12px;">
+      <button class="primary" id="btnCopyAll">העתק הכל</button>
+      <button class="ghost" id="btnResetAll">התחל מחדש</button>
+      <span class="copymsg" id="copyMsg"></span>
+    </div>
+    <p class="qmeta" id="t_submitHelp" style="margin-top:10px; margin-bottom:0;"></p>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   ==========  המורה: ערכו רק את הבלוק הזה  ============================
+   ==========  TEACHER: EDIT ONLY THIS BLOCK  ==========================
+   =====================================================================
+
+   כותרת הדף ותת-הכותרת נמצאות כאן, יחד עם השאלות.
+   The page title and subtitle live here, together with the questions.
+
+   שדות לכל שאלה / Fields per question:
+     q / qHe    - נוסח השאלה (אנגלית / עברית)
+     q2 / qHe2  - אופציונלי: שורת שאלה שנייה, מוצגת אחרי בלוק הקוד
+     code       - אופציונלי: בלוק JSON שמוצג בנפרד, משמאל לימין
+     svg        - אופציונלי: שם גרף מתוך CHARTS (למשל "A") שיוצג מתחת לשאלה
+     type       - "number" | "text" | "open" | "choice"
+     options / optionsHe - (ל-choice) רשימת האפשרויות
+     answer     - ל-choice: מספר האפשרות הנכונה, מתחיל מ-0
+     answer     - number: מספר בודד  |  text: מחרוזת או רשימת מחרוזות
+     tolerance  - (למספרים) סטייה מותרת. ברירת מחדל 0
+     hint / hintHe - רמז אופציונלי
+     note / noteHe - הערה קצרה שמוצגת אחרי תשובה נכונה
+   ===================================================================== */
+
+
+const CHARTS = {"A": {"cap": "תרחיש א‏ — 15 נקודות", "svg": "<svg viewBox=\"0 0 660 196\" xmlns=\"http://www.w3.org/2000/svg\" style=\"width:100%;height:auto\"><rect x=\"0\" y=\"0\" width=\"660\" height=\"196\" fill=\"#FCFDFB\"/><text x=\"179.0\" y=\"16\" font-size=\"11\" font-weight=\"700\" fill=\"#1E2A26\" text-anchor=\"middle\">WCSS</text><line x1=\"52\" y1=\"166.0\" x2=\"306\" y2=\"166.0\" stroke=\"#EEF1EC\"/><text x=\"46\" y=\"169.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0</text><line x1=\"52\" y1=\"119.3\" x2=\"306\" y2=\"119.3\" stroke=\"#EEF1EC\"/><text x=\"46\" y=\"122.3\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">5,000</text><line x1=\"52\" y1=\"72.7\" x2=\"306\" y2=\"72.7\" stroke=\"#EEF1EC\"/><text x=\"46\" y=\"75.7\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">10,000</text><line x1=\"52\" y1=\"26.0\" x2=\"306\" y2=\"26.0\" stroke=\"#EEF1EC\"/><text x=\"46\" y=\"29.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">15,000</text><text x=\"52.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">1</text><text x=\"88.3\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">2</text><text x=\"124.6\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">3</text><text x=\"160.9\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">4</text><text x=\"197.1\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">5</text><text x=\"233.4\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">6</text><text x=\"269.7\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">7</text><text x=\"306.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">8</text><line x1=\"52\" y1=\"166\" x2=\"306\" y2=\"166\" stroke=\"#5B6B65\" stroke-width=\"1.1\"/><line x1=\"52\" y1=\"26\" x2=\"52\" y2=\"166\" stroke=\"#5B6B65\" stroke-width=\"1.1\"/><text x=\"179.0\" y=\"192\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\">K</text><polyline points=\"52.0,55.0 88.3,113.2 124.6,161.9 160.9,162.9 197.1,163.9 233.4,164.5 269.7,165.1 306.0,165.4\" fill=\"none\" stroke=\"#1E3A5F\" stroke-width=\"2\" stroke-linejoin=\"round\"/><circle cx=\"52.0\" cy=\"55.0\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"88.3\" cy=\"113.2\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"124.6\" cy=\"161.9\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"160.9\" cy=\"162.9\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"197.1\" cy=\"163.9\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"233.4\" cy=\"164.5\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"269.7\" cy=\"165.1\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"306.0\" cy=\"165.4\" r=\"3.4\" fill=\"#1E3A5F\"/><text x=\"515.0\" y=\"16\" font-size=\"11\" font-weight=\"700\" fill=\"#1E2A26\" text-anchor=\"middle\">Silhouette</text><line x1=\"388\" y1=\"166.0\" x2=\"642\" y2=\"166.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"169.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0.00</text><line x1=\"388\" y1=\"131.0\" x2=\"642\" y2=\"131.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"134.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0.25</text><line x1=\"388\" y1=\"96.0\" x2=\"642\" y2=\"96.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"99.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0.50</text><line x1=\"388\" y1=\"61.0\" x2=\"642\" y2=\"61.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"64.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0.75</text><line x1=\"388\" y1=\"26.0\" x2=\"642\" y2=\"26.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"29.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">1.00</text><text x=\"388.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">2</text><text x=\"430.3\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">3</text><text x=\"472.7\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">4</text><text x=\"515.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">5</text><text x=\"557.3\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">6</text><text x=\"599.7\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">7</text><text x=\"642.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">8</text><line x1=\"388\" y1=\"166\" x2=\"642\" y2=\"166\" stroke=\"#5B6B65\" stroke-width=\"1.1\"/><line x1=\"388\" y1=\"26\" x2=\"388\" y2=\"166\" stroke=\"#5B6B65\" stroke-width=\"1.1\"/><text x=\"515.0\" y=\"192\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\">K</text><polyline points=\"388.0,88.4 430.3,50.2 472.7,73.1 515.0,90.9 557.3,91.5 599.7,110.6 642.0,122.1\" fill=\"none\" stroke=\"#2F7D52\" stroke-width=\"2\" stroke-linejoin=\"round\"/><circle cx=\"388.0\" cy=\"88.4\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"392.0\" y=\"81.4\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"start\" font-family=\"ui-monospace,monospace\">0.55</text><circle cx=\"430.3\" cy=\"50.2\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"430.3\" y=\"43.2\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.83</text><circle cx=\"472.7\" cy=\"73.1\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"472.7\" y=\"66.1\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.66</text><circle cx=\"515.0\" cy=\"90.9\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"515.0\" y=\"83.9\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.54</text><circle cx=\"557.3\" cy=\"91.5\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"557.3\" y=\"84.5\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.53</text><circle cx=\"599.7\" cy=\"110.6\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"599.7\" y=\"103.6\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.40</text><circle cx=\"642.0\" cy=\"122.1\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"642.0\" y=\"115.1\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.31</text><line x1=\"330\" y1=\"14\" x2=\"330\" y2=\"182\" stroke=\"#DDE1DA\"/></svg>"}, "B": {"cap": "תרחיש ב‏ — 20 נקודות", "svg": "<svg viewBox=\"0 0 660 196\" xmlns=\"http://www.w3.org/2000/svg\" style=\"width:100%;height:auto\"><rect x=\"0\" y=\"0\" width=\"660\" height=\"196\" fill=\"#FCFDFB\"/><text x=\"179.0\" y=\"16\" font-size=\"11\" font-weight=\"700\" fill=\"#1E2A26\" text-anchor=\"middle\">WCSS</text><line x1=\"52\" y1=\"166.0\" x2=\"306\" y2=\"166.0\" stroke=\"#EEF1EC\"/><text x=\"46\" y=\"169.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0</text><line x1=\"52\" y1=\"119.3\" x2=\"306\" y2=\"119.3\" stroke=\"#EEF1EC\"/><text x=\"46\" y=\"122.3\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">10,000</text><line x1=\"52\" y1=\"72.7\" x2=\"306\" y2=\"72.7\" stroke=\"#EEF1EC\"/><text x=\"46\" y=\"75.7\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">20,000</text><line x1=\"52\" y1=\"26.0\" x2=\"306\" y2=\"26.0\" stroke=\"#EEF1EC\"/><text x=\"46\" y=\"29.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">30,000</text><text x=\"52.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">1</text><text x=\"88.3\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">2</text><text x=\"124.6\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">3</text><text x=\"160.9\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">4</text><text x=\"197.1\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">5</text><text x=\"233.4\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">6</text><text x=\"269.7\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">7</text><text x=\"306.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">8</text><line x1=\"52\" y1=\"166\" x2=\"306\" y2=\"166\" stroke=\"#5B6B65\" stroke-width=\"1.1\"/><line x1=\"52\" y1=\"26\" x2=\"52\" y2=\"166\" stroke=\"#5B6B65\" stroke-width=\"1.1\"/><text x=\"179.0\" y=\"192\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\">K</text><polyline points=\"52.0,57.9 88.3,113.0 124.6,138.3 160.9,156.9 197.1,159.3 233.4,161.2 269.7,162.3 306.0,163.1\" fill=\"none\" stroke=\"#1E3A5F\" stroke-width=\"2\" stroke-linejoin=\"round\"/><circle cx=\"52.0\" cy=\"57.9\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"88.3\" cy=\"113.0\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"124.6\" cy=\"138.3\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"160.9\" cy=\"156.9\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"197.1\" cy=\"159.3\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"233.4\" cy=\"161.2\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"269.7\" cy=\"162.3\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"306.0\" cy=\"163.1\" r=\"3.4\" fill=\"#1E3A5F\"/><text x=\"515.0\" y=\"16\" font-size=\"11\" font-weight=\"700\" fill=\"#1E2A26\" text-anchor=\"middle\">Silhouette</text><line x1=\"388\" y1=\"166.0\" x2=\"642\" y2=\"166.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"169.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0.00</text><line x1=\"388\" y1=\"131.0\" x2=\"642\" y2=\"131.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"134.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0.25</text><line x1=\"388\" y1=\"96.0\" x2=\"642\" y2=\"96.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"99.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0.50</text><line x1=\"388\" y1=\"61.0\" x2=\"642\" y2=\"61.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"64.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0.75</text><line x1=\"388\" y1=\"26.0\" x2=\"642\" y2=\"26.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"29.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">1.00</text><text x=\"388.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">2</text><text x=\"430.3\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">3</text><text x=\"472.7\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">4</text><text x=\"515.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">5</text><text x=\"557.3\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">6</text><text x=\"599.7\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">7</text><text x=\"642.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">8</text><line x1=\"388\" y1=\"166\" x2=\"642\" y2=\"166\" stroke=\"#5B6B65\" stroke-width=\"1.1\"/><line x1=\"388\" y1=\"26\" x2=\"388\" y2=\"166\" stroke=\"#5B6B65\" stroke-width=\"1.1\"/><text x=\"515.0\" y=\"192\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\">K</text><polyline points=\"388.0,101.0 430.3,91.0 472.7,74.3 515.0,84.3 557.3,89.4 599.7,100.7 642.0,107.5\" fill=\"none\" stroke=\"#2F7D52\" stroke-width=\"2\" stroke-linejoin=\"round\"/><circle cx=\"388.0\" cy=\"101.0\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"392.0\" y=\"94.0\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"start\" font-family=\"ui-monospace,monospace\">0.46</text><circle cx=\"430.3\" cy=\"91.0\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"430.3\" y=\"84.0\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.54</text><circle cx=\"472.7\" cy=\"74.3\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"472.7\" y=\"67.3\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.65</text><circle cx=\"515.0\" cy=\"84.3\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"515.0\" y=\"77.3\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.58</text><circle cx=\"557.3\" cy=\"89.4\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"557.3\" y=\"82.4\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.55</text><circle cx=\"599.7\" cy=\"100.7\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"599.7\" y=\"93.7\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.47</text><circle cx=\"642.0\" cy=\"107.5\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"642.0\" y=\"100.5\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.42</text><line x1=\"330\" y1=\"14\" x2=\"330\" y2=\"182\" stroke=\"#DDE1DA\"/></svg>"}, "C": {"cap": "תרחיש ג‏ — 20 נקודות", "svg": "<svg viewBox=\"0 0 660 196\" xmlns=\"http://www.w3.org/2000/svg\" style=\"width:100%;height:auto\"><rect x=\"0\" y=\"0\" width=\"660\" height=\"196\" fill=\"#FCFDFB\"/><text x=\"179.0\" y=\"16\" font-size=\"11\" font-weight=\"700\" fill=\"#1E2A26\" text-anchor=\"middle\">WCSS</text><line x1=\"52\" y1=\"166.0\" x2=\"306\" y2=\"166.0\" stroke=\"#EEF1EC\"/><text x=\"46\" y=\"169.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0</text><line x1=\"52\" y1=\"119.3\" x2=\"306\" y2=\"119.3\" stroke=\"#EEF1EC\"/><text x=\"46\" y=\"122.3\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">10,000</text><line x1=\"52\" y1=\"72.7\" x2=\"306\" y2=\"72.7\" stroke=\"#EEF1EC\"/><text x=\"46\" y=\"75.7\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">20,000</text><line x1=\"52\" y1=\"26.0\" x2=\"306\" y2=\"26.0\" stroke=\"#EEF1EC\"/><text x=\"46\" y=\"29.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">30,000</text><text x=\"52.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">1</text><text x=\"88.3\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">2</text><text x=\"124.6\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">3</text><text x=\"160.9\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">4</text><text x=\"197.1\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">5</text><text x=\"233.4\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">6</text><text x=\"269.7\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">7</text><text x=\"306.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">8</text><line x1=\"52\" y1=\"166\" x2=\"306\" y2=\"166\" stroke=\"#5B6B65\" stroke-width=\"1.1\"/><line x1=\"52\" y1=\"26\" x2=\"52\" y2=\"166\" stroke=\"#5B6B65\" stroke-width=\"1.1\"/><text x=\"179.0\" y=\"192\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\">K</text><polyline points=\"52.0,56.8 88.3,109.9 124.6,133.3 160.9,153.0 197.1,159.1 233.4,161.7 269.7,162.6 306.0,163.4\" fill=\"none\" stroke=\"#1E3A5F\" stroke-width=\"2\" stroke-linejoin=\"round\"/><circle cx=\"52.0\" cy=\"56.8\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"88.3\" cy=\"109.9\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"124.6\" cy=\"133.3\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"160.9\" cy=\"153.0\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"197.1\" cy=\"159.1\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"233.4\" cy=\"161.7\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"269.7\" cy=\"162.6\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"306.0\" cy=\"163.4\" r=\"3.4\" fill=\"#1E3A5F\"/><text x=\"515.0\" y=\"16\" font-size=\"11\" font-weight=\"700\" fill=\"#1E2A26\" text-anchor=\"middle\">Silhouette</text><line x1=\"388\" y1=\"166.0\" x2=\"642\" y2=\"166.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"169.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0.00</text><line x1=\"388\" y1=\"131.0\" x2=\"642\" y2=\"131.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"134.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0.25</text><line x1=\"388\" y1=\"96.0\" x2=\"642\" y2=\"96.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"99.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0.50</text><line x1=\"388\" y1=\"61.0\" x2=\"642\" y2=\"61.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"64.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0.75</text><line x1=\"388\" y1=\"26.0\" x2=\"642\" y2=\"26.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"29.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">1.00</text><text x=\"388.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">2</text><text x=\"430.3\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">3</text><text x=\"472.7\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">4</text><text x=\"515.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">5</text><text x=\"557.3\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">6</text><text x=\"599.7\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">7</text><text x=\"642.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">8</text><line x1=\"388\" y1=\"166\" x2=\"642\" y2=\"166\" stroke=\"#5B6B65\" stroke-width=\"1.1\"/><line x1=\"388\" y1=\"26\" x2=\"388\" y2=\"166\" stroke=\"#5B6B65\" stroke-width=\"1.1\"/><text x=\"515.0\" y=\"192\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\">K</text><polyline points=\"388.0,106.2 430.3,97.8 472.7,80.1 515.0,77.9 557.3,79.2 599.7,81.4 642.0,89.9\" fill=\"none\" stroke=\"#2F7D52\" stroke-width=\"2\" stroke-linejoin=\"round\"/><circle cx=\"388.0\" cy=\"106.2\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"392.0\" y=\"99.2\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"start\" font-family=\"ui-monospace,monospace\">0.43</text><circle cx=\"430.3\" cy=\"97.8\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"430.3\" y=\"90.8\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.49</text><circle cx=\"472.7\" cy=\"80.1\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"472.7\" y=\"73.1\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.61</text><circle cx=\"515.0\" cy=\"77.9\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"515.0\" y=\"70.9\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.63</text><circle cx=\"557.3\" cy=\"79.2\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"557.3\" y=\"72.2\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.62</text><circle cx=\"599.7\" cy=\"81.4\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"599.7\" y=\"74.4\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.60</text><circle cx=\"642.0\" cy=\"89.9\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"642.0\" y=\"82.9\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.54</text><line x1=\"330\" y1=\"14\" x2=\"330\" y2=\"182\" stroke=\"#DDE1DA\"/></svg>"}, "D": {"cap": "תרחיש ד‏ — 20 נקודות", "svg": "<svg viewBox=\"0 0 660 196\" xmlns=\"http://www.w3.org/2000/svg\" style=\"width:100%;height:auto\"><rect x=\"0\" y=\"0\" width=\"660\" height=\"196\" fill=\"#FCFDFB\"/><text x=\"179.0\" y=\"16\" font-size=\"11\" font-weight=\"700\" fill=\"#1E2A26\" text-anchor=\"middle\">WCSS</text><line x1=\"52\" y1=\"166.0\" x2=\"306\" y2=\"166.0\" stroke=\"#EEF1EC\"/><text x=\"46\" y=\"169.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0</text><line x1=\"52\" y1=\"131.0\" x2=\"306\" y2=\"131.0\" stroke=\"#EEF1EC\"/><text x=\"46\" y=\"134.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">10,000</text><line x1=\"52\" y1=\"96.0\" x2=\"306\" y2=\"96.0\" stroke=\"#EEF1EC\"/><text x=\"46\" y=\"99.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">20,000</text><line x1=\"52\" y1=\"61.0\" x2=\"306\" y2=\"61.0\" stroke=\"#EEF1EC\"/><text x=\"46\" y=\"64.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">30,000</text><line x1=\"52\" y1=\"26.0\" x2=\"306\" y2=\"26.0\" stroke=\"#EEF1EC\"/><text x=\"46\" y=\"29.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">40,000</text><text x=\"52.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">1</text><text x=\"88.3\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">2</text><text x=\"124.6\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">3</text><text x=\"160.9\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">4</text><text x=\"197.1\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">5</text><text x=\"233.4\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">6</text><text x=\"269.7\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">7</text><text x=\"306.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">8</text><line x1=\"52\" y1=\"166\" x2=\"306\" y2=\"166\" stroke=\"#5B6B65\" stroke-width=\"1.1\"/><line x1=\"52\" y1=\"26\" x2=\"52\" y2=\"166\" stroke=\"#5B6B65\" stroke-width=\"1.1\"/><text x=\"179.0\" y=\"192\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\">K</text><polyline points=\"52.0,49.5 88.3,161.5 124.6,163.1 160.9,164.2 197.1,164.7 233.4,165.1 269.7,165.4 306.0,165.5\" fill=\"none\" stroke=\"#1E3A5F\" stroke-width=\"2\" stroke-linejoin=\"round\"/><circle cx=\"52.0\" cy=\"49.5\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"88.3\" cy=\"161.5\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"124.6\" cy=\"163.1\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"160.9\" cy=\"164.2\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"197.1\" cy=\"164.7\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"233.4\" cy=\"165.1\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"269.7\" cy=\"165.4\" r=\"3.4\" fill=\"#1E3A5F\"/><circle cx=\"306.0\" cy=\"165.5\" r=\"3.4\" fill=\"#1E3A5F\"/><text x=\"515.0\" y=\"16\" font-size=\"11\" font-weight=\"700\" fill=\"#1E2A26\" text-anchor=\"middle\">Silhouette</text><line x1=\"388\" y1=\"166.0\" x2=\"642\" y2=\"166.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"169.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0.00</text><line x1=\"388\" y1=\"131.0\" x2=\"642\" y2=\"131.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"134.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0.25</text><line x1=\"388\" y1=\"96.0\" x2=\"642\" y2=\"96.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"99.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0.50</text><line x1=\"388\" y1=\"61.0\" x2=\"642\" y2=\"61.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"64.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">0.75</text><line x1=\"388\" y1=\"26.0\" x2=\"642\" y2=\"26.0\" stroke=\"#EEF1EC\"/><text x=\"382\" y=\"29.0\" font-size=\"8\" fill=\"#5B6B65\" text-anchor=\"end\" font-family=\"ui-monospace,monospace\">1.00</text><text x=\"388.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">2</text><text x=\"430.3\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">3</text><text x=\"472.7\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">4</text><text x=\"515.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">5</text><text x=\"557.3\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">6</text><text x=\"599.7\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">7</text><text x=\"642.0\" y=\"179\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">8</text><line x1=\"388\" y1=\"166\" x2=\"642\" y2=\"166\" stroke=\"#5B6B65\" stroke-width=\"1.1\"/><line x1=\"388\" y1=\"26\" x2=\"388\" y2=\"166\" stroke=\"#5B6B65\" stroke-width=\"1.1\"/><text x=\"515.0\" y=\"192\" font-size=\"9\" fill=\"#5B6B65\" text-anchor=\"middle\">K</text><polyline points=\"388.0,45.0 430.3,72.4 472.7,102.5 515.0,100.0 557.3,97.3 599.7,97.8 642.0,89.0\" fill=\"none\" stroke=\"#2F7D52\" stroke-width=\"2\" stroke-linejoin=\"round\"/><circle cx=\"388.0\" cy=\"45.0\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"392.0\" y=\"38.0\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"start\" font-family=\"ui-monospace,monospace\">0.86</text><circle cx=\"430.3\" cy=\"72.4\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"430.3\" y=\"65.4\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.67</text><circle cx=\"472.7\" cy=\"102.5\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"472.7\" y=\"95.5\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.45</text><circle cx=\"515.0\" cy=\"100.0\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"515.0\" y=\"93.0\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.47</text><circle cx=\"557.3\" cy=\"97.3\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"557.3\" y=\"90.3\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.49</text><circle cx=\"599.7\" cy=\"97.8\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"599.7\" y=\"90.8\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.49</text><circle cx=\"642.0\" cy=\"89.0\" r=\"3.4\" fill=\"#2F7D52\"/><text x=\"642.0\" y=\"82.0\" font-size=\"7.5\" fill=\"#1E2A26\" text-anchor=\"middle\" font-family=\"ui-monospace,monospace\">0.55</text><line x1=\"330\" y1=\"14\" x2=\"330\" y2=\"182\" stroke=\"#DDE1DA\"/></svg>"}};
+
+const QUIZ = {
+
+  titleHe:    "בחירת K — שילוב של Silhouette ושיטת המרפק",
+  title:      "Choosing K — Silhouette combined with the Elbow method",
+  subtitleHe: "בכל תרחיש מוצגים שני גרפים: WCSS משמאל, Silhouette מימין. קראו את שניהם והחליטו מהו ה-K הטוב ביותר.",
+  subtitle:   "Each scenario shows two charts: WCSS on the left, Silhouette on the right. Read both and decide what the best K is.",
+
+  questions: [
+
+    /* ---------- מושגים / concepts ---------- */
+    {
+      qHe: "מה בדיוק מודד ציון ה-Silhouette של נקודה?",
+      q: "What exactly does the Silhouette score of a point measure?",
+      type: "choice",
+      optionsHe: [
+        "כמה הנקודה קרובה לאשכול שלה בהשוואה לאשכול הזר הקרוב ביותר אליה",
+        "את המרחק של הנקודה מהמרכז של האשכול שלה, בריבוע",
+        "את מספר הנקודות שנמצאות באותו אשכול עם הנקודה",
+        "את סכום המרחקים של כל הנקודות בקבוצת הנתונים"
+      ],
+      options: [
+        "How close the point is to its own cluster compared with the nearest cluster it does not belong to",
+        "The squared distance of the point from its own cluster's centroid",
+        "The number of points that share a cluster with it",
+        "The sum of distances of every point in the dataset"
+      ],
+      answer: 0,
+      hintHe: "ב-Silhouette מופיעים שני גדלים: מרחק פנימי ומרחק חיצוני. WCSS מכיר רק אחד מהם.",
+      hint: "Silhouette involves two quantities: an inside distance and an outside distance. WCSS knows only one of them.",
+      noteHe: "בדיוק. Silhouette מודד לכידוּת מול הפרדה, ולכן הוא רואה גם את מה שקורה בין האשכולות — לא רק בתוכם.",
+      note: "Exactly. Silhouette measures cohesion against separation, so it also sees what happens between clusters, not only inside them."
+    },
+    {
+      qHe: "מדוע אי אפשר לבחור את K פשוט על ידי חיפוש ה-K שנותן את ה-WCSS הנמוך ביותר?",
+      q: "Why can't we choose K simply by looking for the K with the lowest WCSS?",
+      type: "choice",
+      optionsHe: [
+        "כי WCSS תמיד יורד כאשר K גדל, ולכן הוא תמיד יצביע על K הגדול ביותר האפשרי",
+        "כי WCSS עולה כאשר K גדל, ולכן הוא תמיד יצביע על K שווה אחת",
+        "כי WCSS אינו תלוי כלל ב-K",
+        "כי WCSS מחושב רק עבור K זוגי"
+      ],
+      options: [
+        "Because WCSS always decreases as K grows, so it would always point at the largest possible K",
+        "Because WCSS grows as K grows, so it would always point at K equal to one",
+        "Because WCSS does not depend on K at all",
+        "Because WCSS is only defined for even values of K"
+      ],
+      answer: 0,
+      hintHe: "מה יקרה ל-WCSS אם ניתן לכל נקודה אשכול משלה?",
+      hint: "What happens to WCSS if we give every single point a cluster of its own?",
+      noteHe: "נכון. בקצה, כאשר K שווה למספר הנקודות, WCSS מתאפס. לכן אנחנו מחפשים את נקודת המרפק — את המקום שבו הירידה נעצרת — ולא את הערך הנמוך ביותר.",
+      note: "Right. At the extreme, when K equals the number of points, WCSS hits zero. That is why we look for the elbow — the place where the drop stops paying off — and not for the lowest value."
+    },
+
+    /* ---------- תרחיש א: הסכמה חדה ---------- */
+    {
+      qHe: "תרחיש א: באיזה K מגיע גרף ה-Silhouette לשיא שלו?",
+      q: "Scenario A: at which K does the Silhouette chart reach its peak?",
+      type: "number",
+      svg: "A",
+      answer: 3,
+      hintHe: "חפשו את הנקודה הגבוהה ביותר בגרף הירוק מימין.",
+      hint: "Look for the highest point on the green chart on the right.",
+      noteHe: "השיא הוא גבוה מאוד — מעל 0.8 — וזה סימן לאשכולות מופרדים היטב.",
+      note: "The peak is very high — above 0.8 — a sign of well-separated clusters."
+    },
+    {
+      qHe: "תרחיש א: באיזה K נמצאת נקודת המרפק בגרף ה-WCSS?",
+      q: "Scenario A: at which K is the elbow of the WCSS chart?",
+      type: "number",
+      svg: "A",
+      answer: 3,
+      hintHe: "חפשו את ה-K האחרון שאחריו הקו כמעט מפסיק לרדת ונעשה שטוח.",
+      hint: "Find the last K after which the line almost stops falling and goes flat.",
+      noteHe: "הירידה מ-2 ל-3 היא עצומה, והירידה מ-3 ל-4 כמעט לא נראית. זה בדיוק המרפק.",
+      note: "The drop from 2 to 3 is enormous, and the drop from 3 to 4 is barely visible. That is the elbow."
+    },
+    {
+      qHe: "תרחיש א: שתי השיטות הצביעו על אותו K. מה המסקנה?",
+      q: "Scenario A: both methods pointed at the same K. What follows?",
+      type: "choice",
+      svg: "A",
+      optionsHe: [
+        "זוהי העדות החזקה ביותר שאפשר לקבל — K שווה 3 הוא הבחירה, ובביטחון גבוה",
+        "כאשר שתי השיטות מסכימות סימן שהן שתיהן טועות, וצריך לבחור K אחר",
+        "ההסכמה היא מקרית ואין לה שום משמעות",
+        "צריך להריץ שוב עם K גדול יותר עד שהשיטות יחלקו זו על זו"
+      ],
+      options: [
+        "This is the strongest evidence we can get — K equals 3 is the choice, with high confidence",
+        "When both methods agree it means both are wrong, and another K should be chosen",
+        "The agreement is a coincidence and carries no meaning",
+        "We should keep running with larger K until the methods disagree"
+      ],
+      answer: 0,
+      noteHe: "שתי שיטות עצמאיות, שמודדות דברים שונים, שמצביעות על אותו מספר — זה בדיוק המצב שבו כדאי לסמוך על התשובה.",
+      note: "Two independent methods, measuring different things, pointing at the same number — that is exactly when the answer is worth trusting."
+    },
+
+    /* ---------- תרחיש ב: מרפק רך ---------- */
+    {
+      qHe: "תרחיש ב: באיזה K מגיע ה-Silhouette לשיא?",
+      q: "Scenario B: at which K does the Silhouette peak?",
+      type: "number",
+      svg: "B",
+      answer: 4,
+      hintHe: "הקו הירוק עולה, מגיע לנקודה הגבוהה ביותר, ואז יורד בהדרגה.",
+      hint: "The green line rises, reaches its highest point, then falls off gradually.",
+      noteHe: "הפעם השיא נמוך יותר מתרחיש א — בערך 0.65 — כי האשכולות כאן פחות מופרדים.",
+      note: "This peak is lower than in scenario A — about 0.65 — because the clusters here are less separated."
+    },
+    {
+      qHe: "תרחיש ב: גרף ה-WCSS כאן יורד בצורה מתונה יותר מאשר בתרחיש א. מה זה מלמד על הנתונים?",
+      q: "Scenario B: the WCSS chart here falls more gently than in scenario A. What does that tell us about the data?",
+      type: "choice",
+      svg: "B",
+      optionsHe: [
+        "האשכולות קיימים אבל הם פחות מופרדים, ולכן נקודת המרפק פחות דרמטית",
+        "אין בנתונים שום מבנה, והם אקראיים לגמרי",
+        "בנתונים יש בדיוק אשכול אחד",
+        "הנתונים מכילים יותר נקודות מאשר בתרחיש א, וזו הסיבה היחידה"
+      ],
+      options: [
+        "The clusters do exist but are less separated, so the elbow is less dramatic",
+        "There is no structure in the data at all, it is purely random",
+        "The data contains exactly one cluster",
+        "The data has more points than scenario A, and that is the only reason"
+      ],
+      answer: 0,
+      noteHe: "חדות המרפק מספרת לנו עד כמה האשכולות מופרדים. מרפק רך פירושו מבנה אמיתי אך מטושטש יותר — ואז הערך של ה-Silhouette עוזר להכריע.",
+      note: "The sharpness of the elbow tells us how separated the clusters are. A soft elbow means real but blurrier structure — and then the Silhouette value helps settle it."
+    },
+    {
+      qHe: "תרחיש ב: מהו ה-K הטוב ביותר?",
+      q: "Scenario B: what is the best K?",
+      type: "number",
+      svg: "B",
+      answer: 4,
+      hintHe: "בדקו היכן נמצא המרפק, ובדקו היכן נמצא השיא. הפעם הם מצביעים על אותו מקום.",
+      hint: "Check where the elbow sits and where the peak sits. This time they point at the same place.",
+      noteHe: "גם כאן שתי השיטות מסכימות, אף שהגרפים נראים שונים מאוד מתרחיש א.",
+      note: "Here too the methods agree, even though the charts look very different from scenario A."
+    },
+
+    /* ---------- תרחיש ג: אי-הסכמה ---------- */
+    {
+      qHe: "תרחיש ג: באיזה K נמצאת נקודת המרפק של WCSS?",
+      q: "Scenario C: at which K is the WCSS elbow?",
+      type: "number",
+      svg: "C",
+      answer: 4,
+      hintHe: "חפשו את הירידה הגדולה האחרונה. אחרי איזה K הקו מתחיל להשתטח?",
+      hint: "Look for the last large drop. After which K does the line begin to flatten?",
+      noteHe: "הירידה מ-3 ל-4 היא עדיין גדולה, וממנה והלאה הגרף משתטח.",
+      note: "The drop from 3 to 4 is still large, and from there on the chart flattens out."
+    },
+    {
+      qHe: "תרחיש ג: באיזה K מגיע ה-Silhouette לשיא?",
+      q: "Scenario C: at which K does the Silhouette peak?",
+      type: "number",
+      svg: "C",
+      answer: 5,
+      hintHe: "הקו הירוק עולה לרמה גבוהה ונשאר כמעט שטוח. הסתכלו היטב על הערכים המדויקים.",
+      hint: "The green line climbs to a high level and stays almost flat. Look carefully at the exact values.",
+      noteHe: "שימו לב: ההבדל בין K שווה 4 לבין K שווה 5 הוא זעיר. שיא שטוח הוא שיא חלש."
+      ,
+      note: "Notice how tiny the gap between K equal 4 and K equal 5 is. A flat peak is a weak peak."
+    },
+    {
+      qHe: "תרחיש ג: המרפק מצביע על K אחד וה-Silhouette על K אחר. איזו תגובה היא הנכונה?",
+      q: "Scenario C: the elbow points at one K and the Silhouette at another. Which response is the right one?",
+      type: "choice",
+      svg: "C",
+      optionsHe: [
+        "להתייחס לשני הערכים כטווח סביר, להסתכל בגרף הפיזור ולבחור לפי מה שהגיוני בתחום שממנו הגיעו הנתונים",
+        "לבחור תמיד את ה-K הגדול יותר, כי הוא נותן WCSS נמוך יותר",
+        "לבחור תמיד את ה-K הקטן יותר, כי הוא תמיד פשוט יותר",
+        "להסיק שאין בנתונים אשכולות כלל ולוותר על האלגוריתם"
+      ],
+      options: [
+        "Treat both values as a reasonable range, look at the scatter plot, and decide by what makes sense in the domain the data came from",
+        "Always take the larger K, because it gives a lower WCSS",
+        "Always take the smaller K, because it is always simpler",
+        "Conclude that the data has no clusters at all and abandon the algorithm"
+      ],
+      answer: 0,
+      hintHe: "אי-הסכמה בין שתי השיטות אינה תקלה. היא מידע.",
+      hint: "Disagreement between the two methods is not a malfunction. It is information.",
+      noteHe: "אי-הסכמה אומרת שהגבול בין אשכול אחד לשניים אינו חד. אז השיטות מצמצמות את האפשרויות לטווח קטן, והבחירה הסופית נעשית לפי המשמעות של הנתונים.",
+      note: "Disagreement means the boundary between one cluster and two is not sharp. The methods narrow things down to a small range, and the final choice is made by what the data means."
+    },
+    {
+      qHe: "תרחיש ג: שימו לב שערכי ה-Silhouette עבור K שווה 4, 5, 6 ו-7 כמעט זהים. מה זה מלמד אותנו?",
+      q: "Scenario C: notice that the Silhouette values for K equal 4, 5, 6 and 7 are nearly identical. What does that teach us?",
+      type: "choice",
+      svg: "C",
+      optionsHe: [
+        "אין הבדל מהותי באיכות בין החלוקות האלה, ולכן עדיף לבחור את הפשוטה מביניהן",
+        "זו שגיאת חישוב, וצריך להריץ את האלגוריתם מחדש",
+        "כל ארבעת הערכים מתאימים באותה מידה, ולכן נבחר את K שווה 7",
+        "ערכים קרובים פירושם שהאשכולות מופרדים בצורה מושלמת"
+      ],
+      options: [
+        "There is no meaningful quality difference between those splits, so the simplest of them is preferable",
+        "It is a calculation error and the algorithm should be re-run",
+        "All four fit equally well, so we take K equal 7",
+        "Close values mean the clusters are perfectly separated"
+      ],
+      answer: 0,
+      noteHe: "כאשר התוצאות שקולות, בוחרים את המודל הפשוט יותר. יותר אשכולות בלי שיפור באיכות זה רק מורכבות מיותרת.",
+      note: "When results are equivalent, pick the simpler model. More clusters with no gain in quality is just extra complexity."
+    },
+    {
+      qHe: "תרחיש ג: איזה K הייתם בוחרים בסופו של דבר, ומדוע? התייחסו לשני הגרפים בתשובתכם.",
+      q: "Scenario C: which K would you finally choose, and why? Refer to both charts in your answer.",
+      type: "open",
+      svg: "C",
+      hintHe: "אין כאן תשובה אחת נכונה. מה שנבדק הוא הנימוק: מה ראיתם בכל גרף, ומה הכריע.",
+      hint: "There is no single right answer here. What matters is the reasoning: what you saw in each chart, and what settled it."
+    },
+
+    /* ---------- תרחיש ד: סולם המבנה ---------- */
+    {
+      qHe: "תרחיש ד: באיזה K מגיע ה-Silhouette לשיא?",
+      q: "Scenario D: at which K does the Silhouette peak?",
+      type: "number",
+      svg: "D",
+      answer: 2,
+      hintHe: "הפעם הערך הגבוה ביותר נמצא בקצה השמאלי של הגרף הירוק.",
+      hint: "This time the highest value sits at the far left of the green chart.",
+      noteHe: "ערך של 0.87 הוא גבוה מאוד, והוא מעיד על שתי קבוצות רחוקות מאוד זו מזו.",
+      note: "A value of 0.87 is very high, and it points at two groups that lie far apart."
+    },
+    {
+      qHe: "תרחיש ד: בגרף הפיזור של הנתונים האלה אפשר לראות בעין ארבע קבוצות קטנות — שני זוגות, כשכל זוג רחוק מאוד מהשני. ובכל זאת שתי השיטות מצביעות על K שווה 2. מדוע?",
+      q: "Scenario D: in the scatter plot of this data the eye can see four small groups — two pairs, with each pair far from the other. Still both methods point at K equal 2. Why?",
+      type: "choice",
+      svg: "D",
+      optionsHe: [
+        "המרחק בין שני הזוגות גדול בהרבה מהמרחק בתוך כל זוג, ולכן המבנה הבולט ביותר בנתונים הוא שתי קבוצות",
+        "האלגוריתם אינו מסוגל למצוא יותר משני אשכולות",
+        "Silhouette תמיד מגיע לשיא ב-K שווה 2",
+        "WCSS אינו מוגדר עבור K גדול מ-2"
+      ],
+      options: [
+        "The distance between the two pairs is far larger than the distance inside each pair, so the dominant structure in the data is two groups",
+        "The algorithm cannot find more than two clusters",
+        "Silhouette always peaks at K equal 2",
+        "WCSS is undefined for K larger than 2"
+      ],
+      answer: 0,
+      hintHe: "השוו את הירידה מ-1 ל-2 בגרף ה-WCSS לכל שאר הירידות יחד.",
+      hint: "Compare the drop from 1 to 2 on the WCSS chart with all the other drops put together.",
+      noteHe: "למבנה יש סולמות. השיטות מוצאות את הסולם הבולט ביותר — כאן שתי קבוצות. אם מעניינות אתכם דווקא תת-הקבוצות, זו החלטה שלכם כבני אדם, לא של הגרף.",
+      note: "Structure has scales. The methods find the dominant scale — here, two groups. If the sub-groups are what you actually care about, that is your decision as a human, not the chart's."
+    },
+    {
+      qHe: "תרחיש ד: ערך ה-Silhouette יורד עד K שווה 4 ואז מתחיל לטפס שוב, עד 0.55 ב-K שווה 8. האם כדאי לבחור K שווה 8 בגלל הטיפוס הזה?",
+      q: "Scenario D: the Silhouette value falls until K equal 4 and then climbs again, up to 0.55 at K equal 8. Should we pick K equal 8 because of that climb?",
+      type: "choice",
+      svg: "D",
+      optionsHe: [
+        "לא. הערך עדיין נמוך בהרבה מהשיא ב-K שווה 2, והעלייה נובעת מפיצול הקבוצות לחתיכות קטנות וצפופות",
+        "כן. כל עלייה ב-Silhouette פירושה חלוקה טובה יותר",
+        "כן, משום שגם ה-WCSS נמוך יותר שם",
+        "לא, משום ש-K שווה 8 גדול ממספר הנקודות"
+      ],
+      options: [
+        "No. The value is still far below the peak at K equal 2, and the climb comes from splitting the groups into small dense pieces",
+        "Yes. Any rise in Silhouette means a better split",
+        "Yes, because WCSS is also lower there",
+        "No, because K equal 8 is larger than the number of points"
+      ],
+      answer: 0,
+      noteHe: "עלייה מקומית בקצה הימני של הגרף היא מלכודת מוכרת: כשמחלקים לחתיכות זעירות הן נעשות צפופות, אבל הן כבר לא מתארות את המבנה האמיתי.",
+      note: "A local rise at the right end of the chart is a familiar trap: cut things into tiny pieces and they become dense, but they no longer describe the real structure."
+    },
+
+    /* ---------- סיכום ---------- */
+    {
+      qHe: "ציון Silhouette ממוצע של 0.05 עבור חלוקה כלשהי — מה הוא אומר?",
+      q: "A mean Silhouette score of 0.05 for some split — what does it say?",
+      type: "choice",
+      optionsHe: [
+        "הנקודות יושבות בערך באותו מרחק מהאשכול שלהן ומהאשכול השכן, כלומר החלוקה כמעט חסרת משמעות",
+        "החלוקה מצוינת, כי הציון חיובי",
+        "האשכולות מופרדים בצורה מושלמת",
+        "הציון הזה בלתי אפשרי, כי Silhouette חייב להיות גדול מ-0.5"
+      ],
+      options: [
+        "The points sit roughly as close to their own cluster as to the neighbouring one, so the split is nearly meaningless",
+        "The split is excellent, because the score is positive",
+        "The clusters are perfectly separated",
+        "This score is impossible, since Silhouette must exceed 0.5"
+      ],
+      answer: 0,
+      hintHe: "הטווח של Silhouette הוא בין מינוס 1 ל-1. מה מייצג האזור שסביב האפס?",
+      hint: "Silhouette ranges from minus 1 to 1. What does the region around zero represent?",
+      noteHe: "סביב האפס הנקודות יושבות על הגבול. ערך שלילי גרוע עוד יותר: הנקודה קרובה יותר לאשכול זר מאשר לשלה.",
+      note: "Around zero the points sit on the boundary. A negative value is worse still: the point is closer to a foreign cluster than to its own."
+    },
+    {
+      qHe: "כתבו בלשונכם את סדר הפעולות שתבצעו כדי למצוא את ה-K הטוב ביותר עבור קבוצת נתונים חדשה, כשיש בידיכם את שתי השיטות.",
+      q: "Write, in your own words, the procedure you would follow to find the best K for a new dataset, given both methods.",
+      type: "open",
+      hintHe: "חשבו על סדר: מה מריצים, מה משרטטים, מה קוראים מכל גרף, ומה עושים כשהם מסכימים — ומה כשלא.",
+      hint: "Think in order: what you run, what you plot, what you read off each chart, what you do when they agree — and what when they don't."
+    }
+
+  ]
+};
+
+
+/* =====================================================================
+   ==========  סוף אזור המורה / END OF TEACHER SECTION  ================
+   ===================================================================== */
+
+const QUESTIONS = QUIZ.questions;
+
+let lang = "he";
+const I18N = {
+  he: {
+    pickLabel: "שאלה", check: "בדיקה",
+    hintBtn: "הצג רמז", hintBtnHide: "הסתר רמז", clear: "ניקוי",
+    prev: "→ הקודם", next: "הבא ←",
+    correct: "נכון", soft: "עוד לא",
+    openMsg: "נשמר",
+    empty: "כתבו תשובה תחילה.", notANumber: "אנא הזינו מספר.",
+    typeNumber: "תשובה: מספר", typeText: "תשובה: טקסט קצר",
+    typeOpen: "שאלה פתוחה", typeChoice: "בחרו תשובה אחת — יש להשיב נכון כדי להמשיך",
+    pickOne: "בחרו אחת מהאפשרויות.",
+    mustAnswer: "‏כדי להמשיך, בחרו את התשובה הנכונה.",
+    submitLabel: "סיום והגשה", copyAll: "העתק הכל", resetAll: "התחל מחדש",
+    copied: "הועתק! הדביקו במסמך Google Docs.",
+    copyFail: "ההעתקה נכשלה — סמנו והעתיקו ידנית.",
+    submitHelp: 'לחצו "העתק הכל", פתחו מסמך Google Docs חדש, והדביקו. משם אפשר לערוך ולהגיש ב-Google Classroom.',
+    docStatus: (d,t) => `נאספו ${d} מתוך ${t} תשובות`,
+    docEmpty: "התשובות שלכם יופיעו כאן בהדרגה.",
+    hdrDate: "תאריך",
+    lblQuestion: "שאלה", lblAnswer: "התשובה שלי",
+    confirmReset: "לנקות את כל התשובות ולהתחיל מחדש?",
+    langBtn: "English"
+  },
+  en: {
+    pickLabel: "Question", check: "Check",
+    hintBtn: "Show hint", hintBtnHide: "Hide hint", clear: "Clear",
+    prev: "← Previous", next: "Next →",
+    correct: "correct", soft: "not yet",
+    openMsg: "saved",
+    empty: "Write an answer first.", notANumber: "Please enter a number.",
+    typeNumber: "Answer: a number", typeText: "Answer: short text",
+    typeOpen: "Open question", typeChoice: "Choose one answer — a correct answer is needed to move on",
+    pickOne: "Please choose one of the options.",
+    mustAnswer: "To move on, choose the correct answer.",
+    submitLabel: "Finish and submit", copyAll: "Copy all", resetAll: "Start over",
+    copied: "Copied! Paste into a Google Docs file.",
+    copyFail: "Copy failed — select and copy manually.",
+    submitHelp: 'Press "Copy all", open a new Google Docs file, and paste. From there you can edit and submit on Google Classroom.',
+    docStatus: (d,t) => `${d} of ${t} answers collected`,
+    docEmpty: "Your answers will appear here as you go.",
+    hdrDate: "Date",
+    lblQuestion: "Question", lblAnswer: "My answer",
+    confirmReset: "Clear all answers and start over?",
+    langBtn: "עברית"
+  }
+};
+function T(){ return I18N[lang]; }
+function quizTitle(){ return (lang === "he" ? QUIZ.titleHe : QUIZ.title) || QUIZ.title || ""; }
+function quizSubtitle(){ return (lang === "he" ? QUIZ.subtitleHe : QUIZ.subtitle) || QUIZ.subtitle || ""; }
+
+let currentIndex = 0;
+const answers  = new Array(QUESTIONS.length).fill("");
+const verdicts = new Array(QUESTIONS.length).fill(null); // "ok" | "soft" | "open" | null
+
+function pick(item, key){
+  if(lang === "he"){
+    const he = item[key + "He"];
+    return (he !== undefined && he !== null) ? he : item[key];
+  }
+  return item[key];
+}
+function fullQuestionText(item){
+  const main = pick(item, "q");
+  const second = (lang === "he") ? item.qHe2 : item.q2;
+  return second ? main + "\n\n" + second : main;
+}
+
+function normalizeText(s){
+  return String(s).trim().toLowerCase()
+    .replace(/[\u0591-\u05C7]/g, "")
+    .replace(/[.,;:!?'"`׳״()\[\]{}\-–—_]/g, "")
+    .replace(/\s+/g, " ").trim();
+}
+
+function checkAnswer(item, raw){
+  if(item.type === "open") return {status:"open"};
+  if(item.type === "choice"){
+    if(!String(raw).trim()) return {status:"empty"};
+    const correct = optionList(item)[item.answer];
+    return {status: normalizeText(raw) === normalizeText(correct) ? "ok" : "soft"};
+  }
+  if(item.type === "number"){
+    const cleaned = String(raw).trim().replace(/,/g, ".");
+    const val = Number(cleaned);
+    if(cleaned === "" || !isFinite(val)) return {status:"notnum"};
+    const tol = (typeof item.tolerance === "number") ? item.tolerance : 0;
+    return {status: Math.abs(val - Number(item.answer)) <= tol ? "ok" : "soft"};
+  }
+  const accepted = Array.isArray(item.answer) ? item.answer : [item.answer];
+  const given = normalizeText(raw);
+  return {status: accepted.some(a => normalizeText(a) === given) ? "ok" : "soft"};
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, ch =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+
+function populateSelect(){
+  const sel = document.getElementById("qSelect");
+  sel.innerHTML = QUESTIONS.map((item,i)=>{
+    /* Marker shows only whether it's answered — not whether it's right. */
+    const mark = answers[i].trim() ? "• " : "";
+    let label = `${mark}${i+1}. ${pick(item,"q")}`;
+    if(label.length > 95) label = label.slice(0,93) + "…";
+    return `<option value="${i}">${escapeHtml(label)}</option>`;
+  }).join("");
+  sel.value = String(currentIndex);
+}
+
+function renderProgress(){
+  const box = document.getElementById("progress");
+  box.innerHTML = "";
+  QUESTIONS.forEach((_,i)=>{
+    const chip = document.createElement("div");
+    let cls = "pchip";
+    if(answers[i].trim()) cls += " filled";
+    if(i===currentIndex) cls += " current";
+    chip.className = cls;
+    chip.textContent = String(i+1);
+    chip.addEventListener("click", ()=>{
+      if(i > currentIndex && !canLeave()){ blockForward(); return; }
+      saveCurrent(); currentIndex = i; loadQuestion(); renderDocPreview();
+    });
+    box.appendChild(chip);
+  });
+}
+
+function saveCurrent(){
+  const item = QUESTIONS[currentIndex];
+  if(item.type === "choice") return;   // saved the moment an option is picked
+  const el = (item.type === "open")
+    ? document.getElementById("answerArea")
+    : document.getElementById("answerInput");
+  answers[currentIndex] = el.value;
+}
+
+/* Options are displayed in a shuffled order so the correct answer never
+   sits in a predictable position. The order is drawn once per session and
+   then kept, so re-rendering after a pick does not move things around.
+   item.answer still refers to the ORIGINAL array, and checking compares
+   the chosen TEXT, so correctness is unaffected. */
+let shuffleOrder = [];
+function initShuffle(){
+  shuffleOrder = QUESTIONS.map(q=>{
+    const n = (q.options || q.optionsHe || []).length;
+    const idx = Array.from({length:n}, (_,i)=>i);
+    for(let i=n-1; i>0; i--){                 // Fisher-Yates
+      const j = Math.floor(Math.random()*(i+1));
+      [idx[i], idx[j]] = [idx[j], idx[i]];
+    }
+    return idx;
+  });
+}
+
+function optionList(item){
+  return (lang === "he" ? (item.optionsHe || item.options) : item.options) || [];
+}
+
+function renderChoices(item){
+  const box = document.getElementById("choiceBox");
+  box.innerHTML = "";
+  const opts  = optionList(item);
+  const order = shuffleOrder[currentIndex] || opts.map((_,i)=>i);
+  order.forEach((origIdx, pos)=>{
+    const text = opts[origIdx];
+    const idx = origIdx;
+    const id = "opt_" + pos;
+    const label = document.createElement("label");
+    label.className = "choice" + (answers[currentIndex] === text ? " picked" : "");
+    label.setAttribute("for", id);
+    const radio = document.createElement("input");
+    radio.type = "radio"; radio.name = "choiceOpt"; radio.id = id; radio.value = String(idx);
+    radio.checked = (answers[currentIndex] === text);
+    radio.addEventListener("change", ()=>{
+      answers[currentIndex] = text;
+      verdicts[currentIndex] = null;   // not graded until the student presses the button
+      hideVerdict();
+      renderChoices(item);
+      populateSelect(); renderProgress(); renderDocPreview();
+      refreshNext();
+    });
+    const span = document.createElement("span");
+    span.textContent = text;
+    label.appendChild(radio); label.appendChild(span);
+    box.appendChild(label);
+  });
+}
+
+function loadQuestion(){
+  const item = QUESTIONS[currentIndex];
+  const isOpen   = item.type === "open";
+  const isChoice = item.type === "choice";
+
+  document.getElementById("qText").textContent = fullQuestionText(item);
+
+  const svgEl = document.getElementById("qSvg");
+  if(item.svg && CHARTS[item.svg]){
+    svgEl.innerHTML = '<div class="cap">' + (CHARTS[item.svg].cap || "") + '</div>' + CHARTS[item.svg].svg;
+    svgEl.style.display = "block";
+  } else svgEl.style.display = "none";
+
+  const codeEl = document.getElementById("qCode");
+  if(item.code){ codeEl.textContent = item.code; codeEl.style.display = "block"; }
+  else codeEl.style.display = "none";
+
+  document.getElementById("qMeta").textContent =
+    isOpen ? T().typeOpen
+           : isChoice ? T().typeChoice
+           : (item.type==="number" ? T().typeNumber : T().typeText);
+
+  const input = document.getElementById("answerInput");
+  const area  = document.getElementById("answerArea");
+  document.getElementById("inputRow").style.display  = (isOpen || isChoice) ? "none" : "";
+  document.getElementById("choiceBox").style.display = isChoice ? "flex" : "none";
+  document.getElementById("choiceRow").style.display = "none";  // choices grade themselves
+  area.style.display = isOpen ? "block" : "none";
+  if(isChoice){ renderChoices(item); }
+  else if(isOpen){ area.value = answers[currentIndex]; }
+  else {
+    input.value = answers[currentIndex];
+    input.setAttribute("inputmode", item.type==="number" ? "decimal" : "text");
+  }
+
+  hideHint();
+  document.getElementById("btnHint").style.display = pick(item,"hint") ? "" : "none";
+
+  const v = verdicts[currentIndex];
+  if(v === "ok")        showVerdict(T().correct, pick(item,"note") || "");
+  else if(v === "soft") showVerdict(T().soft, "");
+  else if(v === "open") showVerdict(T().openMsg, "");
+  else hideVerdict();
+
+  document.getElementById("btnPrev").disabled = (currentIndex === 0);
+  refreshNext();
+  populateSelect();
+  renderProgress();
+  if(!isChoice) (isOpen ? area : input).focus();
+}
+
+/* A multiple-choice question has to be answered correctly before the
+   student can move forward. Going back is always allowed. */
+/* On a multiple-choice question the Next button first acts as "check",
+   so feedback appears on a deliberate press rather than flashing by as
+   soon as an option is touched. Once the answer is right, the same
+   button moves on. */
+function needsCheck(){
+  const item = QUESTIONS[currentIndex];
+  return item.type === "choice" && verdicts[currentIndex] !== "ok";
+}
+function refreshNext(){
+  const btn = document.getElementById("btnNext");
+  const last = (currentIndex === QUESTIONS.length - 1);
+  if(needsCheck()){
+    btn.textContent = T().check;          // "בדיקה"
+    btn.disabled = !(answers[currentIndex] || "").trim();
+  } else {
+    btn.textContent = T().next;           // "הבא ←"
+    btn.disabled = last;
+  }
+}
+
+function canLeave(){
+  const item = QUESTIONS[currentIndex];
+  if(item.type !== "choice") return true;
+  return verdicts[currentIndex] === "ok";
+}
+function blockForward(){
+  showVerdict(T().mustAnswer, "");
+}
+
+function hideVerdict(){
+  const v = document.getElementById("verdict");
+  v.className = "verdict"; v.innerHTML = "";
+}
+/* One faint line. No colour, no icon, no panel. */
+function showVerdict(text, note){
+  const v = document.getElementById("verdict");
+  v.className = "verdict show";
+  v.innerHTML = `<span class="mark">${escapeHtml(text)}</span>` +
+                (note ? `<span class="note">${escapeHtml(note)}</span>` : "");
+}
+function hideHint(){
+  const h = document.getElementById("hintBox");
+  h.className = "hintbox"; h.textContent = "";
+  document.getElementById("btnHint").textContent = T().hintBtn;
+}
+
+function doCheck(){
+  saveCurrent();
+  const item = QUESTIONS[currentIndex];
+  const raw = answers[currentIndex];
+  if(!raw.trim()){ showVerdict(T().empty, ""); return; }
+  const res = checkAnswer(item, raw);
+  if(res.status === "notnum"){ showVerdict(T().notANumber, ""); return; }
+  if(res.status === "empty"){ showVerdict(T().pickOne, ""); return; }
+  verdicts[currentIndex] = res.status;
+  if(res.status === "ok") showVerdict(T().correct, pick(item,"note") || "");
+  else showVerdict(T().soft, "");
+  populateSelect();
+  renderProgress();
+  renderDocPreview();
+  refreshNext();
+}
+document.getElementById("btnCheck").addEventListener("click", doCheck);
+document.getElementById("btnCheckChoice").addEventListener("click", doCheck);
+
+document.getElementById("answerInput").addEventListener("keydown", e=>{
+  if(e.key === "Enter"){ e.preventDefault(); document.getElementById("btnCheck").click(); }
+});
+document.getElementById("answerInput").addEventListener("input", ()=>{
+  answers[currentIndex] = document.getElementById("answerInput").value;
+  renderDocPreview();
+});
+document.getElementById("answerArea").addEventListener("input", ()=>{
+  answers[currentIndex] = document.getElementById("answerArea").value;
+  verdicts[currentIndex] = answers[currentIndex].trim() ? "open" : null;
+  if(verdicts[currentIndex] === "open") showVerdict(T().openMsg, "");
+  else hideVerdict();
+  populateSelect(); renderProgress(); renderDocPreview();
+});
+
+document.getElementById("btnClear").addEventListener("click", ()=>{
+  answers[currentIndex] = "";
+  verdicts[currentIndex] = null;
+  loadQuestion();
+  renderDocPreview();
+});
+
+document.getElementById("btnHint").addEventListener("click", ()=>{
+  const h = document.getElementById("hintBox");
+  if(h.classList.contains("show")) hideHint();
+  else {
+    h.textContent = pick(QUESTIONS[currentIndex], "hint") || "";
+    h.className = "hintbox show";
+    document.getElementById("btnHint").textContent = T().hintBtnHide;
+  }
+});
+
+document.getElementById("btnPrev").addEventListener("click", ()=>{
+  if(currentIndex > 0){ saveCurrent(); currentIndex--; loadQuestion(); renderDocPreview(); }
+});
+document.getElementById("btnNext").addEventListener("click", ()=>{
+  if(needsCheck()){ doCheck(); return; }          // first press grades
+  if(currentIndex < QUESTIONS.length-1){          // second press moves on
+    saveCurrent(); currentIndex++; loadQuestion(); renderDocPreview();
+  }
+});
+document.getElementById("qSelect").addEventListener("change", e=>{
+  const target = parseInt(e.target.value,10);
+  if(target > currentIndex && !canLeave()){
+    e.target.value = String(currentIndex);   // stay put
+    blockForward(); return;
+  }
+  saveCurrent(); currentIndex = target; loadQuestion(); renderDocPreview();
+});
+
+/* ---- The text that gets copied into Google Docs ----
+   Questions and answers only. Right/wrong is not carried over. */
+function buildReport(){
+  const t = T();
+  const rtl = (lang === "he");
+  const RLM = "\u200F";
+  const date = new Date().toLocaleDateString(rtl ? "he-IL" : "en-GB");
+  const out = [];
+
+  const L = (text) => {
+    const str = String(text);
+    if(!rtl || !str){ out.push(str); return; }
+    str.split("\n").forEach(line => out.push(line ? RLM + line : ""));
+  };
+
+  L(quizTitle());
+  out.push("");
+  L(`${t.hdrDate}: ${date}`);
+  out.push("");
+
+  QUESTIONS.forEach((item,i)=>{
+    const ans = (answers[i] || "").trim();
+    L(`${t.lblQuestion} ${i+1}:`);
+    L(fullQuestionText(item));
+    if(item.code){
+      out.push("");
+      /* Indent every line of a multi-line code block, and let the array
+         join handle line endings so they stay consistent. */
+      String(item.code).split("\n").forEach(line => out.push("    " + line));
+    }
+    out.push("");
+    L(`${t.lblAnswer}: ${ans || "\u2014"}`);
+    out.push("");
+    out.push("");
+  });
+
+  return out.join("\r\n");
+}
+
+function copyMsg(text, ok){
+  const el = document.getElementById("copyMsg");
+  el.textContent = text;
+  el.style.color = ok ? "var(--accent)" : "var(--ink-soft)";
+  setTimeout(()=>{ if(el.textContent === text) el.textContent = ""; }, 5000);
+}
+
+document.getElementById("btnCopyAll").addEventListener("click", async ()=>{
+  saveCurrent();
+  renderDocPreview();
+  const text = buildReport();
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+      copyMsg(T().copied, true);
+      return;
+    }
+    throw new Error("clipboard api unavailable");
+  }catch(e){
+    /* Fallback for file:// pages, where the async clipboard API is blocked. */
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed"; ta.style.top = "-1000px";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try{ ok = document.execCommand("copy"); }catch(_){ ok = false; }
+    document.body.removeChild(ta);
+    copyMsg(ok ? T().copied : T().copyFail, ok);
+  }
+});
+
+document.getElementById("btnResetAll").addEventListener("click", ()=>{
+  if(!confirm(T().confirmReset)) return;
+  answers.fill(""); verdicts.fill(null);
+  renderedBlocks = new Set();
+  currentIndex = 0;
+  document.getElementById("copyMsg").textContent = "";
+  loadQuestion();
+  renderDocPreview();
+});
+
+/* ---- Live preview of what will be copied ---- */
+function isAnswered(i){ return (answers[i] || "").trim().length > 0; }
+let renderedBlocks = new Set();
+
+function renderDocPreview(){
+  const t = T();
+  const page = document.getElementById("docPreview");
+  const date = new Date().toLocaleDateString(lang === "he" ? "he-IL" : "en-GB");
+  const total = QUESTIONS.length;
+  const doneCount = QUESTIONS.reduce((n,_,i)=> n + (isAnswered(i) ? 1 : 0), 0);
+
+  document.getElementById("docProgFill").style.width = `${Math.round(doneCount/total*100)}%`;
+  document.getElementById("docStatus").textContent = t.docStatus(doneCount, total);
+
+  let html = `<p class="doc-h1">${escapeHtml(quizTitle())}</p>`;
+  html += `<p class="doc-meta">${escapeHtml(t.hdrDate)}: ${escapeHtml(date)}</p>`;
+  html += `<hr class="doc-rule">`;
+
+  if(doneCount === 0){
+    html += `<p class="doc-empty">${escapeHtml(t.docEmpty)}</p>`;
+  } else {
+    QUESTIONS.forEach((item,i)=>{
+      if(!isAnswered(i)) return;
+      const isNew = !renderedBlocks.has(i);
+      const ans = (answers[i] || "").trim();
+      html += `<div class="doc-block"${isNew ? "" : ' style="animation:none"'}>`;
+      html += `<p class="dq">${escapeHtml(t.lblQuestion)} ${i+1}: ${escapeHtml(pick(item,"q"))}</p>`;
+      if(item.code) html += `<div class="dcode">${escapeHtml(item.code)}</div>`;
+      html += `<p class="da"><b>${escapeHtml(t.lblAnswer)}:</b> ${escapeHtml(ans)}</p>`;
+      html += `</div><hr class="doc-rule">`;
+    });
+  }
+  page.innerHTML = html;
+
+  QUESTIONS.forEach((_,i)=>{ if(isAnswered(i)) renderedBlocks.add(i); else renderedBlocks.delete(i); });
+  document.getElementById("btnCopyAll").disabled = (doneCount === 0);
+}
+
+document.getElementById("langBtn").addEventListener("click", ()=>{
+  saveCurrent();
+  lang = (lang === "he") ? "en" : "he";
+  const dir = (lang === "he") ? "rtl" : "ltr";
+  document.documentElement.setAttribute("lang", lang);
+  document.documentElement.setAttribute("dir", dir);
+  document.body.setAttribute("dir", dir);
+  applyStaticText();
+  loadQuestion();
+  renderDocPreview();
+});
+
+function applyStaticText(){
+  const t = T();
+  document.title = quizTitle();
+  document.getElementById("t_title").textContent = quizTitle();
+  document.getElementById("t_subtitle").textContent = quizSubtitle();
+  document.getElementById("t_pickLabel").textContent = t.pickLabel;
+  document.getElementById("btnCheck").textContent = t.check;
+  document.getElementById("btnCheckChoice").textContent = t.check;
+  document.getElementById("btnClear").textContent = t.clear;
+  document.getElementById("btnHint").textContent = t.hintBtn;
+  document.getElementById("btnPrev").textContent = t.prev;
+  if(typeof refreshNext === "function") refreshNext(); else document.getElementById("btnNext").textContent = t.next;
+  document.getElementById("t_submitLabel").textContent = t.submitLabel;
+  document.getElementById("btnCopyAll").textContent = t.copyAll;
+  document.getElementById("btnResetAll").textContent = t.resetAll;
+  document.getElementById("t_submitHelp").textContent = t.submitHelp;
+  document.getElementById("langBtn").textContent = t.langBtn;
+}
+
+/* ---- init ---- */
+initShuffle();
+applyStaticText();
+populateSelect();
+loadQuestion();
+renderDocPreview();
+</script>
+</body>
+</html>
