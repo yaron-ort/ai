@@ -668,14 +668,34 @@ function saveCurrent(){
    item.answer still refers to the ORIGINAL array, and checking compares
    the chosen TEXT, so correctness is unaffected. */
 let shuffleOrder = [];
+function shuffled(arr){
+  const a = arr.slice();
+  for(let i=a.length-1; i>0; i--){            // Fisher-Yates
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+/* A plain shuffle is random per question, so by luck the correct answer can
+   land first several times in a row and the quiz looks rigged. Instead the
+   target SLOT for each correct answer is dealt from a shuffled 0,1,2,3 deck
+   that is reshuffled whenever it runs out. The distractors around it are
+   still shuffled, so the order stays unpredictable, but across the quiz the
+   correct answers are spread evenly over the positions. */
 function initShuffle(){
+  let deck = [];
+  const nextSlot = (n)=>{
+    if(!deck.length) deck = shuffled(Array.from({length:n}, (_,i)=>i));
+    return deck.pop() % n;
+  };
   shuffleOrder = QUESTIONS.map(q=>{
     const n = (q.options || q.optionsHe || []).length;
-    const idx = Array.from({length:n}, (_,i)=>i);
-    for(let i=n-1; i>0; i--){                 // Fisher-Yates
-      const j = Math.floor(Math.random()*(i+1));
-      [idx[i], idx[j]] = [idx[j], idx[i]];
-    }
+    if(!n) return [];
+    const idx = shuffled(Array.from({length:n}, (_,i)=>i));
+    const correct = (typeof q.answer === "number") ? q.answer : 0;
+    const want = nextSlot(n);
+    const at = idx.indexOf(correct);
+    if(at !== -1 && at !== want) [idx[at], idx[want]] = [idx[want], idx[at]];
     return idx;
   });
 }
@@ -778,20 +798,22 @@ function needsCheck(){
 function refreshNext(){
   const btn = document.getElementById("btnNext");
   const last = (currentIndex === QUESTIONS.length - 1);
-  if(needsCheck()){
+  const picked = (answers[currentIndex] || "").trim();
+  /* With an option picked the first press still grades, so the feedback is
+     seen. With nothing picked the button simply moves on, so a question can
+     be skipped and come back to later. */
+  if(needsCheck() && picked && verdicts[currentIndex] == null){
     btn.textContent = T().check;          // "בדיקה"
-    btn.disabled = !(answers[currentIndex] || "").trim();
+    btn.disabled = false;
   } else {
     btn.textContent = T().next;           // "הבא ←"
     btn.disabled = last;
   }
 }
 
-function canLeave(){
-  const item = QUESTIONS[currentIndex];
-  if(item.type !== "choice") return true;
-  return verdicts[currentIndex] === "ok";
-}
+/* Navigation is free in both directions: nothing has to be answered, or
+   answered correctly, before moving on. */
+function canLeave(){ return true; }
 function blockForward(){
   showVerdict(T().mustAnswer, "");
 }
@@ -868,7 +890,9 @@ document.getElementById("btnPrev").addEventListener("click", ()=>{
   if(currentIndex > 0){ saveCurrent(); currentIndex--; loadQuestion(); renderDocPreview(); }
 });
 document.getElementById("btnNext").addEventListener("click", ()=>{
-  if(needsCheck()){ doCheck(); return; }          // first press grades
+  if(needsCheck() && (answers[currentIndex] || "").trim() && verdicts[currentIndex] == null){
+    doCheck(); return;        // an ungraded answer is on screen: show the feedback first
+  }                           // a second press then moves on, right or wrong
   if(currentIndex < QUESTIONS.length-1){          // second press moves on
     saveCurrent(); currentIndex++; loadQuestion(); renderDocPreview();
   }
