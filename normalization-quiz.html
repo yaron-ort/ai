@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>בדיקה עצמית</title>
+<style>
+  :root{
+    --bg:#F4F5F1; --card:#FFFFFF; --ink:#1E2A26; --ink-soft:#5B6B65;
+    --accent:#1E3A5F; --accent-hover:#16304D; --line:#DDE1DA;
+    --quiet:#9BA39D;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --sans: -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:18px 18px 50px; background:var(--bg); color:var(--ink);
+       font-family:var(--sans); line-height:1.55;}
+  .wrap{max-width:760px; margin:0 auto;}
+  .topbar{display:flex; justify-content:space-between; align-items:flex-start; gap:14px;}
+  h1{font-family:var(--serif); font-size:22px; font-weight:700; margin:0 0 3px;}
+  .subtitle{color:var(--ink-soft); margin:0 0 14px; font-size:13.5px;}
+  #langBtn{background:#fff; color:var(--accent); border:1.5px solid var(--accent);
+           border-radius:7px; padding:7px 13px; font-size:13px; font-weight:600;
+           cursor:pointer; white-space:nowrap;}
+  #langBtn:hover{background:#EEF2F6;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:10px;
+        padding:16px 18px; margin-bottom:12px;}
+  label.field{display:block; font-size:12px; font-weight:600; color:var(--ink-soft);
+              margin-bottom:6px; text-transform:uppercase; letter-spacing:.03em;}
+  select, input[type="text"], textarea{
+    width:100%; font-family:var(--sans); font-size:15px; padding:10px 12px;
+    border:1.5px solid var(--line); border-radius:8px; background:#fff; color:var(--ink);
+  }
+  textarea{min-height:90px; resize:vertical; line-height:1.5;}
+  select:focus, input[type="text"]:focus, textarea:focus{outline:none; border-color:var(--accent);}
+  .qtext{font-size:16px; margin:0 0 10px; white-space:pre-wrap;}
+  .qcode{
+    direction:ltr; text-align:left; font-family:var(--mono); font-size:12.5px;
+    background:#F8F9F6; border:1px solid var(--line); border-radius:7px;
+    padding:10px 12px; margin:0 0 10px; overflow-x:auto; white-space:pre;
+  }
+  .qmeta{font-size:12.5px; color:var(--ink-soft); margin:0 0 12px;}
+  .row{display:flex; gap:8px; align-items:stretch; margin-top:10px; flex-wrap:wrap;}
+  .row .grow{flex:1; min-width:180px;}
+  button.primary{font-family:var(--sans); font-size:14px; font-weight:600;
+    background:var(--accent); color:#fff; border:none; border-radius:8px;
+    padding:10px 18px; cursor:pointer; white-space:nowrap;}
+  button.primary:hover{background:var(--accent-hover);}
+  button.ghost{font-family:var(--sans); font-size:13.5px; font-weight:600;
+    background:#fff; color:var(--accent); border:1.5px solid var(--accent);
+    border-radius:8px; padding:9px 14px; cursor:pointer; white-space:nowrap;}
+  button.ghost:hover{background:#EEF2F6;}
+  button.ghost:disabled{color:#A8B0A8; border-color:var(--line); cursor:not-allowed; background:#fff;}
+  .nav{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:12px;}
+
+  /* Feedback is deliberately faint: a quiet note, never a verdict.
+     No coloured panels, no big marks — a wrong answer is fine. */
+  .verdict{margin-top:10px; font-size:12.5px; color:var(--quiet);
+           display:none; line-height:1.5;}
+  .verdict.show{display:block;}
+  .verdict .mark{font-weight:500;}
+  .verdict .note{display:block; margin-top:2px;}
+
+  .choices{display:flex; flex-direction:column; gap:8px; margin-top:4px;}
+  .choice{display:flex; align-items:flex-start; gap:10px; padding:10px 12px;
+          border:1.5px solid var(--line); border-radius:8px; cursor:pointer;
+          font-size:15px; line-height:1.45; background:#fff; transition:border-color .12s ease;}
+  .choice:hover{border-color:var(--accent);}
+  .choice input{margin:3px 0 0; flex:none; cursor:pointer;}
+  .choice.picked{border-color:var(--accent); background:#F7F9FB;}
+  .hintbox{margin-top:10px; font-size:13.5px; color:var(--ink-soft); font-style:italic; display:none;}
+  .hintbox.show{display:block;}
+  .progress{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;}
+  .pchip{min-width:28px; height:28px; padding:0 6px; border-radius:6px;
+         border:1.5px solid var(--line); background:#fff; font-size:12.5px;
+         font-family:var(--mono); display:flex; align-items:center;
+         justify-content:center; color:var(--quiet); cursor:pointer;}
+  .pchip:hover{border-color:var(--accent);}
+  /* Answered vs not — nothing about right or wrong. */
+  .pchip.filled{background:#EFF1EC; color:var(--ink);}
+  .pchip.current{border-color:var(--accent); border-width:2px; color:var(--accent); font-weight:700;}
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .copymsg{font-size:13px; font-family:var(--mono);}
+  .docwrap{margin-top:6px;}
+  .docbar{display:flex; align-items:center; gap:10px; margin-bottom:8px;}
+  .docstatus{font-size:12.5px; color:var(--ink-soft); white-space:nowrap;}
+  .docprog{flex:1; height:6px; background:#E8EBE5; border-radius:99px; overflow:hidden;}
+  .docprog-fill{height:100%; width:0%; background:var(--accent); border-radius:99px;
+                transition:width .45s cubic-bezier(.4,0,.2,1);}
+  .docpage{background:#fff; border:1px solid var(--line); border-radius:8px;
+           padding:18px 20px; max-height:300px; overflow-y:auto;
+           box-shadow:inset 0 1px 3px rgba(30,42,38,.04);}
+  .docpage .doc-h1{font-family:var(--serif); font-size:16px; font-weight:700; margin:0 0 8px;}
+  .docpage .doc-meta{font-size:12.5px; color:var(--ink-soft); margin:0 0 4px;}
+  .docpage .doc-rule{border:none; border-top:1px solid var(--line); margin:12px 0;}
+  .docpage .doc-empty{font-size:13px; color:var(--quiet); font-style:italic; margin:6px 0;}
+  .doc-block{animation:docIn .45s cubic-bezier(.2,.8,.2,1); margin-bottom:4px;}
+  @keyframes docIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+  .doc-block .dq{font-size:13.5px; font-weight:600; margin:0 0 4px;}
+  .doc-block .dcode{direction:ltr; text-align:left; font-family:var(--mono);
+                    font-size:11.5px; background:#F8F9F6; border:1px solid var(--line);
+                    border-radius:5px; padding:6px 8px; margin:4px 0; overflow-x:auto; white-space:pre;}
+  .doc-block .da{font-size:13.5px; margin:2px 0 0;}
+  .doc-block .da b{font-weight:600;}
+.qsvg{
+  direction:ltr; margin:12px 0 4px; padding:10px 8px 4px;
+  background:#FCFDFB; border:1px solid #E3E7DF; border-radius:10px;
+}
+.qsvg svg{ display:block; }
+.qsvg .cap{
+  direction:rtl; text-align:center; font-size:12px; color:#5B6B65;
+  margin:2px 0 6px; font-weight:600;
+}
+
+.qsvg .dtab{
+  direction:rtl; border-collapse:collapse; margin:0 auto; font-size:14px;
+  min-width:min(100%, 420px);
+}
+.qsvg .dtab th, .qsvg .dtab td{
+  border:1px solid #E3E7DF; padding:6px 12px; text-align:center;
+}
+.qsvg .dtab thead th{ background:#F2F5EF; font-weight:700; color:#1E2A26; }
+.qsvg .dtab-en{ direction:ltr; }
+.qsvg .dtab-en th[scope="row"]{ text-align:left; }
+.qsvg .cap{ }
+.qsvg .dtab th[scope="row"]{ text-align:right; font-weight:600; background:#FAFBF8; }
+.qsvg .dtab td{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+</style>
+</head>
+<body dir="rtl">
+<div class="wrap">
+  <div class="topbar">
+    <div>
+      <h1 id="t_title"></h1>
+      <p class="subtitle" id="t_subtitle"></p>
+    </div>
+    <button id="langBtn">English</button>
+  </div>
+
+  <div class="card">
+    <label class="field" id="t_pickLabel">שאלה</label>
+    <select id="qSelect"></select>
+    <div class="progress" id="progress"></div>
+  </div>
+
+  <div class="card">
+    <p class="qtext" id="qText"></p>
+    <div class="qsvg" id="qSvg" style="display:none;"></div>
+    <pre class="qcode" id="qCode" style="display:none;"></pre>
+    <p class="qmeta" id="qMeta"></p>
+
+    <div class="row" id="inputRow">
+      <input type="text" class="grow" id="answerInput" autocomplete="off" spellcheck="false">
+      <button class="primary" id="btnCheck">בדיקה</button>
+    </div>
+    <textarea id="answerArea" style="display:none;" spellcheck="false"></textarea>
+    <div class="choices" id="choiceBox" style="display:none;"></div>
+    <div class="row" id="choiceRow" style="display:none;">
+      <button class="primary" id="btnCheckChoice">בדיקה</button>
+    </div>
+
+    <div class="row">
+      <button class="ghost" id="btnHint">הצג רמז</button>
+      <button class="ghost" id="btnClear">ניקוי</button>
+    </div>
+
+    <div class="hintbox" id="hintBox"></div>
+    <div class="verdict" id="verdict"></div>
+
+    <div class="nav">
+      <button class="ghost" id="btnPrev">→ הקודם</button>
+      <button class="ghost" id="btnNext">הבא ←</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label class="field" id="t_submitLabel">סיום והגשה</label>
+    <div class="docwrap">
+      <div class="docbar">
+        <span id="docStatus" class="docstatus"></span>
+        <div class="docprog"><div class="docprog-fill" id="docProgFill"></div></div>
+      </div>
+      <div class="docpage" id="docPreview"></div>
+    </div>
+    <div class="toolbar" style="margin-top:12px;">
+      <button class="primary" id="btnCopyAll">העתק הכל</button>
+      <button class="ghost" id="btnResetAll">התחל מחדש</button>
+      <span class="copymsg" id="copyMsg"></span>
+    </div>
+    <p class="qmeta" id="t_submitHelp" style="margin-top:10px; margin-bottom:0;"></p>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   ==========  המורה: ערכו רק את הבלוק הזה  ============================
+   ==========  TEACHER: EDIT ONLY THIS BLOCK  ==========================
+   =====================================================================
+
+   כותרת הדף ותת-הכותרת נמצאות כאן, יחד עם השאלות.
+   The page title and subtitle live here, together with the questions.
+
+   שדות לכל שאלה / Fields per question:
+     q / qHe    - נוסח השאלה (אנגלית / עברית)
+     q2 / qHe2  - אופציונלי: שורת שאלה שנייה, מוצגת אחרי בלוק הקוד
+     code       - אופציונלי: בלוק JSON שמוצג בנפרד, משמאל לימין
+     svg        - אופציונלי: שם גרף מתוך CHARTS (למשל "A") שיוצג מתחת לשאלה
+     type       - "number" | "text" | "open" | "choice"
+     options / optionsHe - (ל-choice) רשימת האפשרויות
+     answer     - ל-choice: מספר האפשרות הנכונה, מתחיל מ-0
+     answer     - number: מספר בודד  |  text: מחרוזת או רשימת מחרוזות
+     tolerance  - (למספרים) סטייה מותרת. ברירת מחדל 0
+     hint / hintHe - רמז אופציונלי
+     note / noteHe - הערה קצרה שמוצגת אחרי תשובה נכונה
+   ===================================================================== */
+
+
+const CHARTS = {"TBL": {"cap": "טבלת הנתונים — ערכים ל-100 גרם", "svg": "<table class=\"dtab\"><thead><tr><th>מזון</th><th>קלוריות</th><th>חלבון (גרם)</th><th>ברזל (מ\"ג)</th></tr></thead><tbody><tr><th scope=\"row\">חסה</th><td>20</td><td>2</td><td>0.5</td></tr><tr><th scope=\"row\">עדשים</th><td>140</td><td>9</td><td>4.5</td></tr><tr><th scope=\"row\">טונה</th><td>170</td><td>27</td><td>1.3</td></tr><tr><th scope=\"row\">לחם</th><td>260</td><td>10</td><td>2.5</td></tr><tr><th scope=\"row\">גבינה צהובה</th><td>320</td><td>25</td><td>0.9</td></tr></tbody></table>", "svgEn": "<table class=\"dtab dtab-en\"><thead><tr><th>Food</th><th>Calories</th><th>Protein (g)</th><th>Iron (mg)</th></tr></thead><tbody><tr><th scope=\"row\">Lettuce</th><td>20</td><td>2</td><td>0.5</td></tr><tr><th scope=\"row\">Lentils</th><td>140</td><td>9</td><td>4.5</td></tr><tr><th scope=\"row\">Tuna</th><td>170</td><td>27</td><td>1.3</td></tr><tr><th scope=\"row\">Bread</th><td>260</td><td>10</td><td>2.5</td></tr><tr><th scope=\"row\">Yellow cheese</th><td>320</td><td>25</td><td>0.9</td></tr></tbody></table>", "capEn": "Data table — values per 100 grams"}};
+
+const QUIZ = {
+
+  titleHe:    "נרמול נתונים לפני K-Means",
+  title:      "Normalizing data before K-Means",
+  subtitleFooter: "",
+  subtitleHe: "לפניכם טבלת מזונות עם שלושה ממדים. מצאו את המינימום והמקסימום של כל עמודה, ונרמלו את הערכים לטווח שבין 0 ל-1. עגלו לשתי ספרות אחרי הנקודה.",
+  subtitle:   "Below is a table of foods with three dimensions. Find the minimum and maximum of each column, then normalize the values to the range 0 to 1. Round to two decimal places.",
+
+  questions: [
+
+    /* ---------- למה בכלל ---------- */
+    {
+      qHe: "מדוע חשוב לנרמל את הנתונים לפני הרצת K-Means?",
+      q: "Why does the data need to be normalized before running K-Means?",
+      type: "choice",
+      svg: "TBL",
+      optionsHe: [
+        "מפני ש-K-Means מודד מרחקים, והעמודה שהערכים בה גדולים יותר תשלוט בחישוב ותטשטש את שאר העמודות",
+        "מפני שהאלגוריתם אינו יודע לעבוד עם מספרים עשרוניים",
+        "מפני שנרמול מקטין את מספר הנקודות ומזרז את הריצה",
+        "מפני שבלי נרמול האלגוריתם לעולם לא יתכנס ויירוץ לנצח"
+      ],
+      options: [
+        "Because K-Means measures distances, and the column with the larger values dominates the computation and drowns out the others",
+        "Because the algorithm cannot work with decimal numbers",
+        "Because normalizing reduces the number of points and speeds up the run",
+        "Because without it the algorithm never converges and runs forever"
+      ],
+      answer: 0,
+      hintHe: "השוו את ההפרש בין שתי מנות בקלוריות לבין ההפרש ביניהן בברזל. איזה הפרש גדול יותר פי כמה?",
+      hint: "Compare the gap between two foods in calories with their gap in iron. Which is larger, and by how much?",
+      noteHe: "בדיוק. בטבלה הזאת הקלוריות נעות בטווח של 300, והברזל בטווח של 4 בלבד. בלי נרמול, הברזל כמעט לא ישפיע על החלוקה לאשכולות.",
+      note: "Exactly. In this table calories span a range of 300 while iron spans only 4. Without normalization iron would barely affect the clustering at all."
+    },
+    {
+      qHe: "מהי הנוסחה הנכונה לנרמול מינימום-מקסימום של ערך x בעמודה כלשהי?",
+      q: "What is the correct min-max normalization formula for a value x in some column?",
+      type: "choice",
+      optionsHe: [
+        "הערך החדש שווה להפרש בין x לבין המינימום של העמודה, מחולק בהפרש שבין המקסימום למינימום",
+        "הערך החדש שווה ל-x מחולק במקסימום של העמודה",
+        "הערך החדש שווה להפרש בין x לבין הממוצע של העמודה, מחולק במספר השורות",
+        "הערך החדש שווה להפרש בין המקסימום ל-x, מחולק ב-x"
+      ],
+      options: [
+        "The new value is x minus the column minimum, divided by the maximum minus the minimum",
+        "The new value is x divided by the column maximum",
+        "The new value is x minus the column mean, divided by the number of rows",
+        "The new value is the maximum minus x, divided by x"
+      ],
+      answer: 0,
+      noteHe: "המונה מודד כמה x רחוק מתחתית העמודה, והמכנה הוא אורך העמודה כולה. התוצאה היא תמיד מספר בין 0 ל-1.",
+      note: "The numerator measures how far x sits above the bottom of the column, and the denominator is the full span of the column. The result always lands between 0 and 1."
+    },
+
+    /* ---------- מינימום ומקסימום ---------- */
+    {
+      qHe: "מהו הערך הקטן ביותר בעמודת הקלוריות?",
+      q: "What is the smallest value in the calories column?",
+      type: "number",
+      svg: "TBL",
+      answer: 20,
+      noteHe: "זהו המינימום של עמודת הקלוריות, והוא ינורמל בדיוק ל-0.",
+      note: "This is the minimum of the calories column, and it will normalize to exactly 0."
+    },
+    {
+      qHe: "מהו הערך הגדול ביותר בעמודת הקלוריות?",
+      q: "What is the largest value in the calories column?",
+      type: "number",
+      svg: "TBL",
+      answer: 320,
+      noteHe: "המקסימום ינורמל בדיוק ל-1. לכן אורך העמודה הוא ההפרש ביניהם: 300.",
+      note: "The maximum normalizes to exactly 1. So the span of the column is the gap between them: 300."
+    },
+    {
+      qHe: "מהו ההפרש בין המקסימום למינימום בעמודת החלבון? זהו המכנה שתשתמשו בו בכל חישובי החלבון.",
+      q: "What is the maximum minus the minimum in the protein column? This is the denominator for every protein calculation.",
+      type: "number",
+      svg: "TBL",
+      answer: 25,
+      hintHe: "החלבון הגבוה ביותר בטבלה שייך לטונה, והנמוך ביותר לחסה.",
+      hint: "The highest protein in the table belongs to the tuna, the lowest to the lettuce.",
+      noteHe: "הטווח הוא מ-2 עד 27, כלומר 25.",
+      note: "The range runs from 2 up to 27, so 25."
+    },
+    {
+      qHe: "מהו ההפרש בין המקסימום למינימום בעמודת הברזל?",
+      q: "What is the maximum minus the minimum in the iron column?",
+      type: "number",
+      svg: "TBL",
+      answer: 4,
+      hintHe: "הברזל הגבוה ביותר שייך לעדשים, והנמוך ביותר לחסה.",
+      hint: "The highest iron belongs to the lentils, the lowest to the lettuce.",
+      noteHe: "הטווח הוא מ-0.5 עד 4.5, כלומר 4. שימו לב כמה הוא קטן לעומת 300 של הקלוריות.",
+      note: "The range runs from 0.5 up to 4.5, so 4. Notice how tiny that is next to the 300 of the calories."
+    },
+
+    /* ---------- חישוב הערכים החדשים ---------- */
+    {
+      qHe: "מהו הערך המנורמל של הקלוריות של הלחם? עגלו לשתי ספרות אחרי הנקודה.",
+      q: "What is the normalized calorie value of the bread? Round to two decimals.",
+      type: "number",
+      svg: "TBL",
+      answer: 0.8,
+      tolerance: 0.005,
+      hintHe: "קחו את מספר הקלוריות של הלחם, החסירו ממנו את המינימום של העמודה, וחלקו ב-300.",
+      hint: "Take the bread's calorie figure, subtract the column minimum, and divide by 300.",
+      noteHe: "החישוב הוא 260 פחות 20, חלקי 300, כלומר 240 חלקי 300.",
+      note: "The computation is 260 minus 20, over 300, which is 240 over 300."
+    },
+    {
+      qHe: "מהו הערך המנורמל של החלבון של העדשים?",
+      q: "What is the normalized protein value of the lentils?",
+      type: "number",
+      svg: "TBL",
+      answer: 0.28,
+      tolerance: 0.005,
+      hintHe: "החלבון של העדשים הוא 9, המינימום הוא 2, והמכנה הוא 25.",
+      hint: "The lentils' protein is 9, the minimum is 2, and the denominator is 25.",
+      noteHe: "החישוב הוא 9 פחות 2, חלקי 25, כלומר 7 חלקי 25.",
+      note: "The computation is 9 minus 2, over 25, which is 7 over 25."
+    },
+    {
+      qHe: "מהו הערך המנורמל של הברזל של הטונה?",
+      q: "What is the normalized iron value of the tuna?",
+      type: "number",
+      svg: "TBL",
+      answer: 0.2,
+      tolerance: 0.005,
+      hintHe: "הברזל של הטונה הוא 1.3, המינימום הוא 0.5, והמכנה הוא 4.",
+      hint: "The tuna's iron is 1.3, the minimum is 0.5, and the denominator is 4.",
+      noteHe: "החישוב הוא 1.3 פחות 0.5, חלקי 4, כלומר 0.8 חלקי 4.",
+      note: "The computation is 1.3 minus 0.5, over 4, which is 0.8 over 4."
+    },
+    {
+      qHe: "מהו הערך המנורמל של החלבון של הגבינה הצהובה?",
+      q: "What is the normalized protein value of the yellow cheese?",
+      type: "number",
+      svg: "TBL",
+      answer: 0.92,
+      tolerance: 0.005,
+      noteHe: "החישוב הוא 25 פחות 2, חלקי 25, כלומר 23 חלקי 25. ערך קרוב מאוד ל-1, כי הגבינה כמעט הכי עשירה בחלבון בטבלה.",
+      note: "The computation is 25 minus 2, over 25, which is 23 over 25. Very close to 1, since the cheese is nearly the richest in protein here."
+    },
+    {
+      qHe: "מהו הערך המנורמל של הברזל של הלחם?",
+      q: "What is the normalized iron value of the bread?",
+      type: "number",
+      svg: "TBL",
+      answer: 0.5,
+      tolerance: 0.005,
+      noteHe: "החישוב הוא 2.5 פחות 0.5, חלקי 4. הלחם יושב בדיוק באמצע עמודת הברזל.",
+      note: "The computation is 2.5 minus 0.5, over 4. The bread sits exactly in the middle of the iron column."
+    },
+    {
+      qHe: "מהי השורה המלאה של העדשים אחרי הנרמול?",
+      q: "After normalization, what is the full row of the lentils — the three values in the order calories, protein, iron?",
+      type: "choice",
+      svg: "TBL",
+      optionsHe: [
+        "קלוריות 0.40\u200f, חלבון 0.28\u200f, ברזל 1.00",
+        "קלוריות 0.44\u200f, חלבון 0.33\u200f, ברזל 1.00",
+        "קלוריות 0.40\u200f, חלבון 0.28\u200f, ברזל 0.90",
+        "קלוריות 1.00\u200f, חלבון 0.28\u200f, ברזל 0.40"
+      ],
+      options: [
+        "calories 0.40, protein 0.28, iron 1.00",
+        "calories 0.44, protein 0.33, iron 1.00",
+        "calories 0.40, protein 0.28, iron 0.90",
+        "calories 1.00, protein 0.28, iron 0.40"
+      ],
+      answer: 0,
+      hintHe: "את החלבון כבר חישבתם. הקלוריות הן 140 פחות 20 חלקי 300, והברזל של העדשים הוא המקסימום של העמודה.",
+      hint: "You already computed the protein. Calories are 140 minus 20 over 300, and the lentils' iron is the column maximum.",
+      noteHe: "הברזל של העדשים הוא המקסימום בעמודה, ולכן הוא מקבל בדיוק 1. זו הנקודה היחידה בטבלה שמגיעה לקצה העליון של עמודת הברזל.",
+      note: "The lentils' iron is the column maximum, so it gets exactly 1. It is the only point in the table that reaches the top of the iron column."
+    },
+
+    /* ---------- מה למדנו ---------- */
+    {
+      qHe: "אחרי הנרמול, החסה מקבלת את השורה 0.00, 0.00, 0.00. מדוע?",
+      q: "After normalization the lettuce gets the row 0.00, 0.00, 0.00. Why?",
+      type: "choice",
+      svg: "TBL",
+      optionsHe: [
+        "מפני שהחסה היא הערך הנמוך ביותר בכל שלוש העמודות, ולכן כל מונה מתאפס",
+        "מפני שהחסה היא ירק, והנרמול מאפס ירקות",
+        "מפני שהחסה היא השורה הראשונה בטבלה",
+        "מפני שהערכים של החסה קטנים מ-1 מלכתחילה"
+      ],
+      options: [
+        "Because the lettuce holds the lowest value in all three columns, so every numerator becomes zero",
+        "Because the lettuce is a vegetable, and normalization zeroes out vegetables",
+        "Because the lettuce is the first row of the table",
+        "Because the lettuce's values are below 1 to begin with"
+      ],
+      answer: 0,
+      noteHe: "במקרה זה אותה שורה היא המינימום בכל העמודות, וזה לא חייב לקרות. בדרך כלל המינימום של כל עמודה שייך לשורה אחרת.",
+      note: "Here the same row happens to be the minimum in every column, which is not guaranteed. Usually each column's minimum belongs to a different row."
+    },
+    {
+      qHe: "מהו טווח הערכים בכל אחת מהעמודות אחרי נרמול מינימום-מקסימום?",
+      q: "What is the range of values in each column after min-max normalization?",
+      type: "choice",
+      optionsHe: [
+        "בין 0 ל-1, כאשר 0 הוא הערך הנמוך ביותר בעמודה ו-1 הגבוה ביותר",
+        "בין מינוס 1 ל-1, סביב הממוצע",
+        "בין 0 ל-100, כמו באחוזים",
+        "הטווח נשאר כפי שהיה, רק הסדר משתנה"
+      ],
+      options: [
+        "Between 0 and 1, where 0 is the column's lowest value and 1 its highest",
+        "Between minus 1 and 1, centred on the mean",
+        "Between 0 and 100, as in percentages",
+        "The range stays as it was, only the order changes"
+      ],
+      answer: 0,
+      noteHe: "זה בדיוק מה שהיינו צריכים: שלוש העמודות מדברות עכשיו באותה שפה, ולכן לכל אחת מהן יש משקל שווה בחישוב המרחק.",
+      note: "That is precisely what we were after: all three columns now speak the same language, so each carries equal weight in the distance computation."
+    },
+    {
+      qHe: "נניח שהיינו מריצים K-Means על הטבלה המקורית, בלי לנרמל. על פי איזה ממד היו נקבעים האשכולות כמעט לבדו?",
+      q: "Suppose we ran K-Means on the original table without normalizing. Which single dimension would decide the clusters almost on its own?",
+      type: "choice",
+      svg: "TBL",
+      optionsHe: [
+        "הקלוריות, מפני שההפרשים בעמודה הזאת גדולים פי עשרות מההפרשים בשתי העמודות האחרות",
+        "הברזל, מפני שהערכים בו הם הקטנים ביותר",
+        "החלבון, מפני שהוא נמצא באמצע",
+        "כל שלושת הממדים היו משפיעים באותה מידה"
+      ],
+      options: [
+        "Calories, because the gaps in that column are tens of times larger than the gaps in the other two",
+        "Iron, because its values are the smallest",
+        "Protein, because it sits in the middle",
+        "All three dimensions would matter equally"
+      ],
+      answer: 0,
+      hintHe: "הפרש של 100 קלוריות מול הפרש של 2 מיליגרם ברזל: בריבוע, מי מהם שולט בסכום?",
+      hint: "A gap of 100 calories against a gap of 2 milligrams of iron: once squared, which one dominates the sum?",
+      noteHe: "הפרש של 100 בקלוריות תורם 10,000 למרחק בריבוע, בעוד הפרש של 2 בברזל תורם 4 בלבד. הברזל פשוט נעלם.",
+      note: "A gap of 100 in calories contributes 10,000 to the squared distance, while a gap of 2 in iron contributes just 4. The iron simply vanishes."
+    },
+    {
+      qHe: "בטבלה אמיתית ייתכן מזון אחד חריג עם 900 קלוריות, הרבה מעל כל השאר. מה יקרה לערכים המנורמלים של שאר המזונות?",
+      q: "In a real table there might be one outlier food at 900 calories, far above all the rest. What happens to the normalized values of the others?",
+      type: "choice",
+      svg: "TBL",
+      optionsHe: [
+        "כולם יידחסו לקצה התחתון וייראו דומים זה לזה, מפני שהמכנה גדל מאוד",
+        "הם לא ישתנו כלל, מפני שהנרמול מתעלם מערכים חריגים",
+        "הם ייפרשו טוב יותר על פני הטווח שבין 0 ל-1",
+        "הם יקבלו ערכים שליליים"
+      ],
+      options: [
+        "They all get squeezed toward the bottom and start to look alike, because the denominator grows a great deal",
+        "They do not change at all, since normalization ignores outliers",
+        "They spread out better across the range from 0 to 1",
+        "They become negative"
+      ],
+      answer: 0,
+      hintHe: "המכנה הוא המקסימום פחות המינימום. מה קורה לו כאשר המקסימום קופץ מ-320 ל-900?",
+      hint: "The denominator is max minus min. What happens to it when the maximum jumps from 320 to 900?",
+      noteHe: "זו החולשה המרכזית של נרמול מינימום-מקסימום: הוא נשען על שני ערכי קצה בלבד, ולכן ערך חריג יחיד דוחס את כל השאר.",
+      note: "This is the main weakness of min-max normalization: it leans on just two extreme values, so a single outlier compresses everything else."
+    },
+    {
+      qHe: "הסבירו בלשונכם: מה בדיוק משתנה בתוצאה של K-Means כאשר מנרמלים את הנתונים לפני ההרצה, ולמה זה חשוב דווקא לאלגוריתם הזה?",
+      q: "Explain in your own words: what exactly changes in the K-Means result when the data is normalized first, and why does it matter for this algorithm in particular?",
+      type: "open",
+      hintHe: "חשבו על מה שהאלגוריתם עושה בכל איטרציה: הוא מודד מרחקים. מה המרחק הזה מודד כשהעמודות בסולמות שונים לגמרי?",
+      hint: "Think about what the algorithm does in every iteration: it measures distances. What is that distance really measuring when the columns live on completely different scales?"
+    }
+
+  ]
+};
+
+
+/* =====================================================================
+   ==========  סוף אזור המורה / END OF TEACHER SECTION  ================
+   ===================================================================== */
+
+const QUESTIONS = QUIZ.questions;
+
+let lang = "he";
+const I18N = {
+  he: {
+    pickLabel: "שאלה", check: "בדיקה",
+    hintBtn: "הצג רמז", hintBtnHide: "הסתר רמז", clear: "ניקוי",
+    prev: "→ הקודם", next: "הבא ←",
+    correct: "נכון", soft: "עוד לא",
+    openMsg: "נשמר",
+    empty: "כתבו תשובה תחילה.", notANumber: "אנא הזינו מספר.",
+    typeNumber: "תשובה: מספר", typeText: "תשובה: טקסט קצר",
+    typeOpen: "שאלה פתוחה", typeChoice: "בחרו תשובה אחת — יש להשיב נכון כדי להמשיך",
+    pickOne: "בחרו אחת מהאפשרויות.",
+    mustAnswer: "‏כדי להמשיך, בחרו את התשובה הנכונה.",
+    submitLabel: "סיום והגשה", copyAll: "העתק הכל", resetAll: "התחל מחדש",
+    copied: "הועתק! הדביקו במסמך Google Docs.",
+    copyFail: "ההעתקה נכשלה — סמנו והעתיקו ידנית.",
+    submitHelp: 'לחצו "העתק הכל", פתחו מסמך Google Docs חדש, והדביקו. משם אפשר לערוך ולהגיש ב-Google Classroom.',
+    docStatus: (d,t) => `נאספו ${d} מתוך ${t} תשובות`,
+    docEmpty: "התשובות שלכם יופיעו כאן בהדרגה.",
+    hdrDate: "תאריך",
+    lblQuestion: "שאלה", lblAnswer: "התשובה שלי",
+    confirmReset: "לנקות את כל התשובות ולהתחיל מחדש?",
+    langBtn: "English"
+  },
+  en: {
+    pickLabel: "Question", check: "Check",
+    hintBtn: "Show hint", hintBtnHide: "Hide hint", clear: "Clear",
+    prev: "← Previous", next: "Next →",
+    correct: "correct", soft: "not yet",
+    openMsg: "saved",
+    empty: "Write an answer first.", notANumber: "Please enter a number.",
+    typeNumber: "Answer: a number", typeText: "Answer: short text",
+    typeOpen: "Open question", typeChoice: "Choose one answer — a correct answer is needed to move on",
+    pickOne: "Please choose one of the options.",
+    mustAnswer: "To move on, choose the correct answer.",
+    submitLabel: "Finish and submit", copyAll: "Copy all", resetAll: "Start over",
+    copied: "Copied! Paste into a Google Docs file.",
+    copyFail: "Copy failed — select and copy manually.",
+    submitHelp: 'Press "Copy all", open a new Google Docs file, and paste. From there you can edit and submit on Google Classroom.',
+    docStatus: (d,t) => `${d} of ${t} answers collected`,
+    docEmpty: "Your answers will appear here as you go.",
+    hdrDate: "Date",
+    lblQuestion: "Question", lblAnswer: "My answer",
+    confirmReset: "Clear all answers and start over?",
+    langBtn: "עברית"
+  }
+};
+function T(){ return I18N[lang]; }
+function quizTitle(){ return (lang === "he" ? QUIZ.titleHe : QUIZ.title) || QUIZ.title || ""; }
+function quizSubtitle(){ return (lang === "he" ? QUIZ.subtitleHe : QUIZ.subtitle) || QUIZ.subtitle || ""; }
+
+let currentIndex = 0;
+const answers  = new Array(QUESTIONS.length).fill("");
+const verdicts = new Array(QUESTIONS.length).fill(null); // "ok" | "soft" | "open" | null
+
+function pick(item, key){
+  if(lang === "he"){
+    const he = item[key + "He"];
+    return (he !== undefined && he !== null) ? he : item[key];
+  }
+  return item[key];
+}
+function fullQuestionText(item){
+  const main = pick(item, "q");
+  const second = (lang === "he") ? item.qHe2 : item.q2;
+  return second ? main + "\n\n" + second : main;
+}
+
+function normalizeText(s){
+  return String(s).trim().toLowerCase()
+    .replace(/[\u0591-\u05C7]/g, "")
+    .replace(/[.,;:!?'"`׳״()\[\]{}\-–—_]/g, "")
+    .replace(/\s+/g, " ").trim();
+}
+
+function checkAnswer(item, raw){
+  if(item.type === "open") return {status:"open"};
+  if(item.type === "choice"){
+    if(!String(raw).trim()) return {status:"empty"};
+    const correct = optionList(item)[item.answer];
+    return {status: normalizeText(raw) === normalizeText(correct) ? "ok" : "soft"};
+  }
+  if(item.type === "number"){
+    const cleaned = String(raw).trim().replace(/,/g, ".");
+    const val = Number(cleaned);
+    if(cleaned === "" || !isFinite(val)) return {status:"notnum"};
+    const tol = (typeof item.tolerance === "number") ? item.tolerance : 0;
+    return {status: Math.abs(val - Number(item.answer)) <= tol ? "ok" : "soft"};
+  }
+  const accepted = Array.isArray(item.answer) ? item.answer : [item.answer];
+  const given = normalizeText(raw);
+  return {status: accepted.some(a => normalizeText(a) === given) ? "ok" : "soft"};
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, ch =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+
+function populateSelect(){
+  const sel = document.getElementById("qSelect");
+  sel.innerHTML = QUESTIONS.map((item,i)=>{
+    /* Marker shows only whether it's answered — not whether it's right. */
+    const mark = answers[i].trim() ? "• " : "";
+    let label = `${mark}${i+1}. ${pick(item,"q")}`;
+    if(label.length > 95) label = label.slice(0,93) + "…";
+    return `<option value="${i}">${escapeHtml(label)}</option>`;
+  }).join("");
+  sel.value = String(currentIndex);
+}
+
+function renderProgress(){
+  const box = document.getElementById("progress");
+  box.innerHTML = "";
+  QUESTIONS.forEach((_,i)=>{
+    const chip = document.createElement("div");
+    let cls = "pchip";
+    if(answers[i].trim()) cls += " filled";
+    if(i===currentIndex) cls += " current";
+    chip.className = cls;
+    chip.textContent = String(i+1);
+    chip.addEventListener("click", ()=>{
+      if(i > currentIndex && !canLeave()){ blockForward(); return; }
+      saveCurrent(); currentIndex = i; loadQuestion(); renderDocPreview();
+    });
+    box.appendChild(chip);
+  });
+}
+
+function saveCurrent(){
+  const item = QUESTIONS[currentIndex];
+  if(item.type === "choice") return;   // saved the moment an option is picked
+  const el = (item.type === "open")
+    ? document.getElementById("answerArea")
+    : document.getElementById("answerInput");
+  answers[currentIndex] = el.value;
+}
+
+/* Options are displayed in a shuffled order so the correct answer never
+   sits in a predictable position. The order is drawn once per session and
+   then kept, so re-rendering after a pick does not move things around.
+   item.answer still refers to the ORIGINAL array, and checking compares
+   the chosen TEXT, so correctness is unaffected. */
+let shuffleOrder = [];
+function shuffled(arr){
+  const a = arr.slice();
+  for(let i=a.length-1; i>0; i--){            // Fisher-Yates
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+/* A plain shuffle is random per question, so by luck the correct answer can
+   land first several times in a row and the quiz looks rigged. Instead the
+   target SLOT for each correct answer is dealt from a shuffled 0,1,2,3 deck
+   that is reshuffled whenever it runs out. The distractors around it are
+   still shuffled, so the order stays unpredictable, but across the quiz the
+   correct answers are spread evenly over the positions. */
+function initShuffle(){
+  let deck = [];
+  const nextSlot = (n)=>{
+    if(!deck.length) deck = shuffled(Array.from({length:n}, (_,i)=>i));
+    return deck.pop() % n;
+  };
+  shuffleOrder = QUESTIONS.map(q=>{
+    const n = (q.options || q.optionsHe || []).length;
+    if(!n) return [];
+    const idx = shuffled(Array.from({length:n}, (_,i)=>i));
+    const correct = (typeof q.answer === "number") ? q.answer : 0;
+    const want = nextSlot(n);
+    const at = idx.indexOf(correct);
+    if(at !== -1 && at !== want) [idx[at], idx[want]] = [idx[want], idx[at]];
+    return idx;
+  });
+}
+
+function optionList(item){
+  return (lang === "he" ? (item.optionsHe || item.options) : item.options) || [];
+}
+
+function renderChoices(item){
+  const box = document.getElementById("choiceBox");
+  box.innerHTML = "";
+  const opts  = optionList(item);
+  const order = shuffleOrder[currentIndex] || opts.map((_,i)=>i);
+  order.forEach((origIdx, pos)=>{
+    const text = opts[origIdx];
+    const idx = origIdx;
+    const id = "opt_" + pos;
+    const label = document.createElement("label");
+    label.className = "choice" + (answers[currentIndex] === text ? " picked" : "");
+    label.setAttribute("for", id);
+    const radio = document.createElement("input");
+    radio.type = "radio"; radio.name = "choiceOpt"; radio.id = id; radio.value = String(idx);
+    radio.checked = (answers[currentIndex] === text);
+    radio.addEventListener("change", ()=>{
+      answers[currentIndex] = text;
+      verdicts[currentIndex] = null;   // not graded until the student presses the button
+      hideVerdict();
+      renderChoices(item);
+      populateSelect(); renderProgress(); renderDocPreview();
+      refreshNext();
+    });
+    const span = document.createElement("span");
+    span.textContent = text;
+    label.appendChild(radio); label.appendChild(span);
+    box.appendChild(label);
+  });
+}
+
+function loadQuestion(){
+  const item = QUESTIONS[currentIndex];
+  const isOpen   = item.type === "open";
+  const isChoice = item.type === "choice";
+
+  document.getElementById("qText").textContent = fullQuestionText(item);
+
+  const svgEl = document.getElementById("qSvg");
+  if(item.svg && CHARTS[item.svg]){
+    const ch = CHARTS[item.svg];
+    const cap  = (lang === "he" ? ch.cap : (ch.capEn || ch.cap)) || "";
+    const body = (lang === "he" ? ch.svg : (ch.svgEn || ch.svg));
+    svgEl.innerHTML = '<div class="cap">' + cap + '</div>' + body;
+    svgEl.style.display = "block";
+  } else svgEl.style.display = "none";
+
+  const codeEl = document.getElementById("qCode");
+  if(item.code){ codeEl.textContent = item.code; codeEl.style.display = "block"; }
+  else codeEl.style.display = "none";
+
+  document.getElementById("qMeta").textContent =
+    isOpen ? T().typeOpen
+           : isChoice ? T().typeChoice
+           : (item.type==="number" ? T().typeNumber : T().typeText);
+
+  const input = document.getElementById("answerInput");
+  const area  = document.getElementById("answerArea");
+  document.getElementById("inputRow").style.display  = (isOpen || isChoice) ? "none" : "";
+  document.getElementById("choiceBox").style.display = isChoice ? "flex" : "none";
+  document.getElementById("choiceRow").style.display = "none";  // choices grade themselves
+  area.style.display = isOpen ? "block" : "none";
+  if(isChoice){ renderChoices(item); }
+  else if(isOpen){ area.value = answers[currentIndex]; }
+  else {
+    input.value = answers[currentIndex];
+    input.setAttribute("inputmode", item.type==="number" ? "decimal" : "text");
+  }
+
+  hideHint();
+  document.getElementById("btnHint").style.display = pick(item,"hint") ? "" : "none";
+
+  const v = verdicts[currentIndex];
+  if(v === "ok")        showVerdict(T().correct, pick(item,"note") || "");
+  else if(v === "soft") showVerdict(T().soft, "");
+  else if(v === "open") showVerdict(T().openMsg, "");
+  else hideVerdict();
+
+  document.getElementById("btnPrev").disabled = (currentIndex === 0);
+  refreshNext();
+  populateSelect();
+  renderProgress();
+  if(!isChoice) (isOpen ? area : input).focus();
+}
+
+/* A multiple-choice question has to be answered correctly before the
+   student can move forward. Going back is always allowed. */
+/* On a multiple-choice question the Next button first acts as "check",
+   so feedback appears on a deliberate press rather than flashing by as
+   soon as an option is touched. Once the answer is right, the same
+   button moves on. */
+function needsCheck(){
+  const item = QUESTIONS[currentIndex];
+  return item.type === "choice" && verdicts[currentIndex] !== "ok";
+}
+function refreshNext(){
+  const btn = document.getElementById("btnNext");
+  const last = (currentIndex === QUESTIONS.length - 1);
+  if(needsCheck()){
+    btn.textContent = T().check;          // "בדיקה"
+    btn.disabled = !(answers[currentIndex] || "").trim();
+  } else {
+    btn.textContent = T().next;           // "הבא ←"
+    btn.disabled = last;
+  }
+}
+
+function canLeave(){
+  const item = QUESTIONS[currentIndex];
+  if(item.type !== "choice") return true;
+  return verdicts[currentIndex] === "ok";
+}
+function blockForward(){
+  showVerdict(T().mustAnswer, "");
+}
+
+function hideVerdict(){
+  const v = document.getElementById("verdict");
+  v.className = "verdict"; v.innerHTML = "";
+}
+/* One faint line. No colour, no icon, no panel. */
+function showVerdict(text, note){
+  const v = document.getElementById("verdict");
+  v.className = "verdict show";
+  v.innerHTML = `<span class="mark">${escapeHtml(text)}</span>` +
+                (note ? `<span class="note">${escapeHtml(note)}</span>` : "");
+}
+function hideHint(){
+  const h = document.getElementById("hintBox");
+  h.className = "hintbox"; h.textContent = "";
+  document.getElementById("btnHint").textContent = T().hintBtn;
+}
+
+function doCheck(){
+  saveCurrent();
+  const item = QUESTIONS[currentIndex];
+  const raw = answers[currentIndex];
+  if(!raw.trim()){ showVerdict(T().empty, ""); return; }
+  const res = checkAnswer(item, raw);
+  if(res.status === "notnum"){ showVerdict(T().notANumber, ""); return; }
+  if(res.status === "empty"){ showVerdict(T().pickOne, ""); return; }
+  verdicts[currentIndex] = res.status;
+  if(res.status === "ok") showVerdict(T().correct, pick(item,"note") || "");
+  else showVerdict(T().soft, "");
+  populateSelect();
+  renderProgress();
+  renderDocPreview();
+  refreshNext();
+}
+document.getElementById("btnCheck").addEventListener("click", doCheck);
+document.getElementById("btnCheckChoice").addEventListener("click", doCheck);
+
+document.getElementById("answerInput").addEventListener("keydown", e=>{
+  if(e.key === "Enter"){ e.preventDefault(); document.getElementById("btnCheck").click(); }
+});
+document.getElementById("answerInput").addEventListener("input", ()=>{
+  answers[currentIndex] = document.getElementById("answerInput").value;
+  renderDocPreview();
+});
+document.getElementById("answerArea").addEventListener("input", ()=>{
+  answers[currentIndex] = document.getElementById("answerArea").value;
+  verdicts[currentIndex] = answers[currentIndex].trim() ? "open" : null;
+  if(verdicts[currentIndex] === "open") showVerdict(T().openMsg, "");
+  else hideVerdict();
+  populateSelect(); renderProgress(); renderDocPreview();
+});
+
+document.getElementById("btnClear").addEventListener("click", ()=>{
+  answers[currentIndex] = "";
+  verdicts[currentIndex] = null;
+  loadQuestion();
+  renderDocPreview();
+});
+
+document.getElementById("btnHint").addEventListener("click", ()=>{
+  const h = document.getElementById("hintBox");
+  if(h.classList.contains("show")) hideHint();
+  else {
+    h.textContent = pick(QUESTIONS[currentIndex], "hint") || "";
+    h.className = "hintbox show";
+    document.getElementById("btnHint").textContent = T().hintBtnHide;
+  }
+});
+
+document.getElementById("btnPrev").addEventListener("click", ()=>{
+  if(currentIndex > 0){ saveCurrent(); currentIndex--; loadQuestion(); renderDocPreview(); }
+});
+document.getElementById("btnNext").addEventListener("click", ()=>{
+  if(needsCheck()){ doCheck(); return; }          // first press grades
+  if(currentIndex < QUESTIONS.length-1){          // second press moves on
+    saveCurrent(); currentIndex++; loadQuestion(); renderDocPreview();
+  }
+});
+document.getElementById("qSelect").addEventListener("change", e=>{
+  const target = parseInt(e.target.value,10);
+  if(target > currentIndex && !canLeave()){
+    e.target.value = String(currentIndex);   // stay put
+    blockForward(); return;
+  }
+  saveCurrent(); currentIndex = target; loadQuestion(); renderDocPreview();
+});
+
+/* ---- The text that gets copied into Google Docs ----
+   Questions and answers only. Right/wrong is not carried over. */
+function buildReport(){
+  const t = T();
+  const rtl = (lang === "he");
+  const RLM = "\u200F";
+  const date = new Date().toLocaleDateString(rtl ? "he-IL" : "en-GB");
+  const out = [];
+
+  const L = (text) => {
+    const str = String(text);
+    if(!rtl || !str){ out.push(str); return; }
+    str.split("\n").forEach(line => out.push(line ? RLM + line : ""));
+  };
+
+  L(quizTitle());
+  out.push("");
+  L(`${t.hdrDate}: ${date}`);
+  out.push("");
+
+  QUESTIONS.forEach((item,i)=>{
+    const ans = (answers[i] || "").trim();
+    L(`${t.lblQuestion} ${i+1}:`);
+    L(fullQuestionText(item));
+    if(item.code){
+      out.push("");
+      /* Indent every line of a multi-line code block, and let the array
+         join handle line endings so they stay consistent. */
+      String(item.code).split("\n").forEach(line => out.push("    " + line));
+    }
+    out.push("");
+    L(`${t.lblAnswer}: ${ans || "\u2014"}`);
+    out.push("");
+    out.push("");
+  });
+
+  return out.join("\r\n");
+}
+
+function copyMsg(text, ok){
+  const el = document.getElementById("copyMsg");
+  el.textContent = text;
+  el.style.color = ok ? "var(--accent)" : "var(--ink-soft)";
+  setTimeout(()=>{ if(el.textContent === text) el.textContent = ""; }, 5000);
+}
+
+document.getElementById("btnCopyAll").addEventListener("click", async ()=>{
+  saveCurrent();
+  renderDocPreview();
+  const text = buildReport();
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+      copyMsg(T().copied, true);
+      return;
+    }
+    throw new Error("clipboard api unavailable");
+  }catch(e){
+    /* Fallback for file:// pages, where the async clipboard API is blocked. */
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed"; ta.style.top = "-1000px";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try{ ok = document.execCommand("copy"); }catch(_){ ok = false; }
+    document.body.removeChild(ta);
+    copyMsg(ok ? T().copied : T().copyFail, ok);
+  }
+});
+
+document.getElementById("btnResetAll").addEventListener("click", ()=>{
+  if(!confirm(T().confirmReset)) return;
+  answers.fill(""); verdicts.fill(null);
+  renderedBlocks = new Set();
+  currentIndex = 0;
+  document.getElementById("copyMsg").textContent = "";
+  loadQuestion();
+  renderDocPreview();
+});
+
+/* ---- Live preview of what will be copied ---- */
+function isAnswered(i){ return (answers[i] || "").trim().length > 0; }
+let renderedBlocks = new Set();
+
+function renderDocPreview(){
+  const t = T();
+  const page = document.getElementById("docPreview");
+  const date = new Date().toLocaleDateString(lang === "he" ? "he-IL" : "en-GB");
+  const total = QUESTIONS.length;
+  const doneCount = QUESTIONS.reduce((n,_,i)=> n + (isAnswered(i) ? 1 : 0), 0);
+
+  document.getElementById("docProgFill").style.width = `${Math.round(doneCount/total*100)}%`;
+  document.getElementById("docStatus").textContent = t.docStatus(doneCount, total);
+
+  let html = `<p class="doc-h1">${escapeHtml(quizTitle())}</p>`;
+  html += `<p class="doc-meta">${escapeHtml(t.hdrDate)}: ${escapeHtml(date)}</p>`;
+  html += `<hr class="doc-rule">`;
+
+  if(doneCount === 0){
+    html += `<p class="doc-empty">${escapeHtml(t.docEmpty)}</p>`;
+  } else {
+    QUESTIONS.forEach((item,i)=>{
+      if(!isAnswered(i)) return;
+      const isNew = !renderedBlocks.has(i);
+      const ans = (answers[i] || "").trim();
+      html += `<div class="doc-block"${isNew ? "" : ' style="animation:none"'}>`;
+      html += `<p class="dq">${escapeHtml(t.lblQuestion)} ${i+1}: ${escapeHtml(pick(item,"q"))}</p>`;
+      if(item.code) html += `<div class="dcode">${escapeHtml(item.code)}</div>`;
+      html += `<p class="da"><b>${escapeHtml(t.lblAnswer)}:</b> ${escapeHtml(ans)}</p>`;
+      html += `</div><hr class="doc-rule">`;
+    });
+  }
+  page.innerHTML = html;
+
+  QUESTIONS.forEach((_,i)=>{ if(isAnswered(i)) renderedBlocks.add(i); else renderedBlocks.delete(i); });
+  document.getElementById("btnCopyAll").disabled = (doneCount === 0);
+}
+
+document.getElementById("langBtn").addEventListener("click", ()=>{
+  saveCurrent();
+  lang = (lang === "he") ? "en" : "he";
+  const dir = (lang === "he") ? "rtl" : "ltr";
+  document.documentElement.setAttribute("lang", lang);
+  document.documentElement.setAttribute("dir", dir);
+  document.body.setAttribute("dir", dir);
+  applyStaticText();
+  loadQuestion();
+  renderDocPreview();
+});
+
+function applyStaticText(){
+  const t = T();
+  document.title = quizTitle();
+  document.getElementById("t_title").textContent = quizTitle();
+  document.getElementById("t_subtitle").textContent = quizSubtitle();
+  document.getElementById("t_pickLabel").textContent = t.pickLabel;
+  document.getElementById("btnCheck").textContent = t.check;
+  document.getElementById("btnCheckChoice").textContent = t.check;
+  document.getElementById("btnClear").textContent = t.clear;
+  document.getElementById("btnHint").textContent = t.hintBtn;
+  document.getElementById("btnPrev").textContent = t.prev;
+  if(typeof refreshNext === "function") refreshNext(); else document.getElementById("btnNext").textContent = t.next;
+  document.getElementById("t_submitLabel").textContent = t.submitLabel;
+  document.getElementById("btnCopyAll").textContent = t.copyAll;
+  document.getElementById("btnResetAll").textContent = t.resetAll;
+  document.getElementById("t_submitHelp").textContent = t.submitHelp;
+  document.getElementById("langBtn").textContent = t.langBtn;
+}
+
+/* ---- init ---- */
+initShuffle();
+applyStaticText();
+populateSelect();
+loadQuestion();
+renderDocPreview();
+</script>
+</body>
+</html>
